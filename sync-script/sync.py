@@ -41,6 +41,13 @@ def _app_dir() -> Path:
     return Path(__file__).parent
 
 
+def _resource_path(rel: str) -> Path:
+    """Path a un recurso empaquetado (dentro de _MEIPASS si es .exe, junto al script en dev)."""
+    if getattr(sys, "frozen", False):
+        return Path(sys._MEIPASS) / rel  # type: ignore[attr-defined]
+    return Path(__file__).parent / rel
+
+
 CONFIG_FILE = _app_dir() / "config.json"
 
 # ─────────────────────────────────────────────────────────────
@@ -81,7 +88,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger("sincrogastos")
 
-CATEGORIA_VALIDAS = {"Casa", "Hijo 1", "Hijo 2", "Hijo 3", "Yo", "Otros"}
+# Categorías aceptadas (sin restricción: cualquier texto no vacío es válido)
+CATEGORIA_VALIDAS: set[str] = set()  # vacío = aceptar todo
 
 MONTH_TABS: dict[str, int] = {
     "01 Enero": 1, "02 Febrero": 2, "03 Marzo": 3,
@@ -357,7 +365,7 @@ def read_excel(excel_path: str) -> list[ExpenseRow]:
             detalle      = str(cells[col+3]).strip() if cells[col+3] else ""
             importe_raw  = cells[col+4]
 
-            if categoria not in CATEGORIA_VALIDAS or not subcategoria:
+            if not categoria or not subcategoria:
                 continue
 
             fecha = _parse_date(fecha_raw)
@@ -621,9 +629,21 @@ class SyncApp(tk.Tk):
     def _setup_ui(self) -> None:
         pad = {"padx": 16, "pady": 6}
 
-        # Cabecera
-        tk.Label(self, text="SincroGastos", font=("Inter", 17, "bold"),
-                 fg="#CDD6F4", bg="#1E1E2E").pack(padx=16, pady=(16, 2), anchor="w")
+        # Cabecera con logo
+        try:
+            from PIL import Image, ImageTk
+            logo_path = _resource_path("logo.png")
+            img = Image.open(logo_path)
+            target_h = 52
+            ratio = target_h / img.height
+            img = img.resize((int(img.width * ratio), target_h), Image.LANCZOS)
+            self._logo_img = ImageTk.PhotoImage(img)
+            tk.Label(self, image=self._logo_img, bg="#1E1E2E").pack(
+                padx=16, pady=(12, 0), anchor="w"
+            )
+        except Exception:
+            tk.Label(self, text="SincroGastos", font=("Inter", 17, "bold"),
+                     fg="#CDD6F4", bg="#1E1E2E").pack(padx=16, pady=(16, 2), anchor="w")
 
         self.status_label = tk.Label(
             self, text="Sin configuración", font=("Inter", 9),

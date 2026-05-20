@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { CategorySelector } from './CategorySelector'
 import { Button } from '../ui/Button'
 import { useToast } from '../ui/Toast'
-import type { CategoryName, ExpenseInput } from '../../types'
+import type { ExpenseInput } from '../../types'
 
 interface ExpenseFormProps {
   onSubmit: (data: ExpenseInput) => Promise<{ error: string | null }>
@@ -27,7 +27,7 @@ export function ExpenseForm({
 
   const [importe, setImporte] = useState(initialData?.importe?.toString() ?? '')
   const [fecha, setFecha] = useState(initialData?.fecha ?? todayISO())
-  const [categoria, setCategoria] = useState<CategoryName | null>(initialData?.categoria ?? null)
+  const [categoria, setCategoria] = useState<string | null>(initialData?.categoria ?? null)
   const [subcategoria, setSubcategoria] = useState<string | null>(initialData?.subcategoria ?? null)
   const [detalle, setDetalle] = useState(initialData?.detalle ?? '')
   const [loading, setLoading] = useState(false)
@@ -48,7 +48,7 @@ export function ExpenseForm({
     return Object.keys(errs).length === 0
   }
 
-  const handleCategoryChange = (cat: CategoryName) => {
+  const handleCategoryChange = (cat: string) => {
     setCategoria(cat)
     setSubcategoria(null)
     setErrors((e) => ({ ...e, categoria: '', subcategoria: '' }))

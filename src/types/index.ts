@@ -1,4 +1,4 @@
-export type CategoryName = 'Casa' | 'Hijo 1' | 'Hijo 2' | 'Hijo 3' | 'Yo' | 'Otros'
+export type CategoryName = string
 export type ExpenseOrigin = 'web' | 'excel'
 
 export interface Expense {

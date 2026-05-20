@@ -1,13 +1,14 @@
 import { useState, useMemo } from 'react'
 import { Search, Filter, ChevronLeft, ChevronRight, Pencil, Trash2, AlertTriangle } from 'lucide-react'
 import { useExpenses } from '../hooks/useExpenses'
-import { CATEGORY_NAMES, CATEGORIES, formatARS } from '../lib/categoryData'
+import { useCategories } from '../contexts/CategoriesContext'
+import { formatARS } from '../lib/categoryData'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Modal } from '../components/ui/Modal'
 import { ExpenseForm } from '../components/forms/ExpenseForm'
 import { useToast } from '../components/ui/Toast'
-import type { CategoryName, Expense, ExpenseInput } from '../types'
+import type { Expense, ExpenseInput } from '../types'
 
 const PAGE_SIZE = 20
 
@@ -28,11 +29,12 @@ function formatDateFull(dateStr: string): string {
 
 export function History() {
   const { expenses, loading, updateExpense, deleteExpense } = useExpenses()
+  const { categories, categoriesMap } = useCategories()
   const toast = useToast()
 
   const [search, setSearch] = useState('')
   const [filterMonth, setFilterMonth] = useState('')
-  const [filterCat, setFilterCat] = useState<CategoryName | ''>('')
+  const [filterCat, setFilterCat] = useState('')
   const [filterSub, setFilterSub] = useState('')
   const [page, setPage] = useState(1)
   const [editExpense, setEditExpense] = useState<Expense | null>(null)
@@ -62,7 +64,7 @@ export function History() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
-  const subcategories = filterCat ? CATEGORIES[filterCat] : []
+  const subcategories = filterCat ? (categoriesMap[filterCat] ?? []) : []
 
   const handleUpdate = async (data: ExpenseInput) => {
     if (!editExpense) return { error: 'Sin gasto seleccionado' }
@@ -79,24 +81,20 @@ export function History() {
     const result = await deleteExpense(id)
     setDeletingId(null)
     setConfirmDelete(null)
-    if (result.error) {
-      toast('error', 'Error al eliminar')
-    } else {
-      toast('success', 'Gasto eliminado')
-    }
+    if (result.error) toast('error', 'Error al eliminar')
+    else toast('success', 'Gasto eliminado')
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 space-y-4">
+    <div className="max-w-4xl mx-auto px-4 py-6 space-y-4 pb-24 sm:pb-6">
       <div className="flex items-center gap-3">
         <Filter size={20} className="text-primary dark:text-primary-dark" />
         <h1 className="text-xl font-bold text-text1 dark:text-text1-dark">Historial</h1>
       </div>
 
-      {/* Filtros */}
+      {/* Filters */}
       <Card padding="sm">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {/* Buscador */}
           <div className="relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text2 dark:text-text2-dark" />
             <input
@@ -108,7 +106,6 @@ export function History() {
             />
           </div>
 
-          {/* Mes */}
           <select
             value={filterMonth}
             onChange={(e) => { setFilterMonth(e.target.value); setPage(1) }}
@@ -117,17 +114,15 @@ export function History() {
             {MONTHS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
           </select>
 
-          {/* Categoría */}
           <select
             value={filterCat}
-            onChange={(e) => { setFilterCat(e.target.value as CategoryName | ''); setFilterSub(''); setPage(1) }}
+            onChange={(e) => { setFilterCat(e.target.value); setFilterSub(''); setPage(1) }}
             className="py-2 px-3 text-sm rounded-xl bg-surface-2 dark:bg-surface-2dark border-2 border-transparent focus:border-primary dark:focus:border-primary-dark outline-none transition-all text-text1 dark:text-text1-dark"
           >
             <option value="">Todas las categorías</option>
-            {CATEGORY_NAMES.map((c) => <option key={c} value={c}>{c}</option>)}
+            {categories.map((c) => <option key={c.id} value={c.nombre}>{c.nombre}</option>)}
           </select>
 
-          {/* Subcategoría */}
           <select
             value={filterSub}
             disabled={!filterCat}
@@ -140,15 +135,11 @@ export function History() {
         </div>
       </Card>
 
-      {/* Resultados */}
       <div className="flex items-center justify-between text-xs text-text2 dark:text-text2-dark px-1">
         <span>{filtered.length} resultado{filtered.length !== 1 ? 's' : ''}</span>
-        {filtered.length > 0 && (
-          <span>Pág. {page} de {totalPages}</span>
-        )}
+        {filtered.length > 0 && <span>Pág. {page} de {totalPages}</span>}
       </div>
 
-      {/* Lista */}
       {loading ? (
         <Card className="flex items-center justify-center h-32">
           <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -191,7 +182,6 @@ export function History() {
                     {formatARS(expense.importe)}
                   </span>
 
-                  {/* Acciones */}
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                     <button
                       onClick={() => setEditExpense(expense)}
@@ -232,22 +222,18 @@ export function History() {
         </Card>
       )}
 
-      {/* Paginación */}
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2">
           <Button variant="secondary" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>
             <ChevronLeft size={14} />
           </Button>
-          <span className="text-sm text-text2 dark:text-text2-dark px-2">
-            {page} / {totalPages}
-          </span>
+          <span className="text-sm text-text2 dark:text-text2-dark px-2">{page} / {totalPages}</span>
           <Button variant="secondary" size="sm" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}>
             <ChevronRight size={14} />
           </Button>
         </div>
       )}
 
-      {/* Modal de edición */}
       <Modal open={!!editExpense} onClose={() => setEditExpense(null)} title="Editar gasto">
         {editExpense && (
           <ExpenseForm

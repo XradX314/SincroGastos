@@ -1,11 +1,8 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import {
-  Home, User, HelpCircle, Baby, type LucideIcon,
-} from 'lucide-react'
-import { CATEGORIES, CATEGORY_COLORS } from '../../lib/categoryData'
-import type { CategoryName } from '../../types'
+import { Home, User, HelpCircle, Baby, type LucideIcon, Tag } from 'lucide-react'
+import { useCategories } from '../../contexts/CategoriesContext'
 
-const CATEGORY_ICONS: Record<CategoryName, LucideIcon> = {
+const ICON_MAP: Record<string, LucideIcon> = {
   'Casa':   Home,
   'Hijo 1': Baby,
   'Hijo 2': Baby,
@@ -15,9 +12,9 @@ const CATEGORY_ICONS: Record<CategoryName, LucideIcon> = {
 }
 
 interface CategorySelectorProps {
-  selectedCategory: CategoryName | null
+  selectedCategory: string | null
   selectedSubcategory: string | null
-  onCategoryChange: (cat: CategoryName) => void
+  onCategoryChange: (cat: string) => void
   onSubcategoryChange: (sub: string) => void
 }
 
@@ -27,22 +24,22 @@ export function CategorySelector({
   onCategoryChange,
   onSubcategoryChange,
 }: CategorySelectorProps) {
-  const categories = Object.keys(CATEGORIES) as CategoryName[]
+  const { categories, colorsMap } = useCategories()
 
   return (
     <div className="space-y-3">
       {/* Grilla de categorías */}
       <div className="grid grid-cols-3 gap-2">
         {categories.map((cat) => {
-          const Icon = CATEGORY_ICONS[cat]
-          const color = CATEGORY_COLORS[cat]
-          const isSelected = selectedCategory === cat
+          const Icon = ICON_MAP[cat.nombre] ?? Tag
+          const color = colorsMap[cat.nombre] ?? '#6B7280'
+          const isSelected = selectedCategory === cat.nombre
 
           return (
             <motion.button
-              key={cat}
+              key={cat.id}
               type="button"
-              onClick={() => onCategoryChange(cat)}
+              onClick={() => onCategoryChange(cat.nombre)}
               whileTap={{ scale: 0.96 }}
               className={[
                 'flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border-2 transition-all',
@@ -62,7 +59,7 @@ export function CategorySelector({
                 className="text-xs font-medium leading-tight text-center"
                 style={isSelected ? { color } : { color: 'inherit' }}
               >
-                {cat}
+                {cat.nombre}
               </span>
             </motion.button>
           )
@@ -80,13 +77,11 @@ export function CategorySelector({
             transition={{ duration: 0.2, ease: 'easeInOut' }}
             className="overflow-hidden"
           >
-            <p className="text-xs font-medium text-text2 dark:text-text2-dark mb-2">
-              Subcategoría
-            </p>
+            <p className="text-xs font-medium text-text2 dark:text-text2-dark mb-2">Subcategoría</p>
             <div className="flex flex-wrap gap-2">
-              {CATEGORIES[selectedCategory].map((sub) => {
+              {(categories.find((c) => c.nombre === selectedCategory)?.subcategorias ?? []).map((sub) => {
                 const isActive = selectedSubcategory === sub
-                const color = CATEGORY_COLORS[selectedCategory]
+                const color = colorsMap[selectedCategory] ?? '#6B7280'
                 return (
                   <motion.button
                     key={sub}

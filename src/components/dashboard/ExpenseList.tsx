@@ -1,30 +1,19 @@
 import { useState } from 'react'
-import {
-  Home, User, Users, HelpCircle, Trash2,
-  AlertTriangle,
-} from 'lucide-react'
+import { Home, User, Users, HelpCircle, Trash2, AlertTriangle, Tag } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { formatARS } from '../../lib/categoryData'
+import { useCategories } from '../../contexts/CategoriesContext'
 import { Card } from '../ui/Card'
 import { Button } from '../ui/Button'
-import type { CategoryName, Expense } from '../../types'
+import type { Expense } from '../../types'
 
-const CATEGORY_ICONS: Record<CategoryName, LucideIcon> = {
+const ICON_MAP: Record<string, LucideIcon> = {
   'Casa':   Home,
   'Hijo 1': Users,
   'Hijo 2': Users,
   'Hijo 3': Users,
   'Yo':     User,
   'Otros':  HelpCircle,
-}
-
-const CATEGORY_COLORS: Record<CategoryName, string> = {
-  'Casa':   'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
-  'Hijo 1': 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400',
-  'Hijo 2': 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400',
-  'Hijo 3': 'bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400',
-  'Yo':     'bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400',
-  'Otros':  'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
 }
 
 function formatDate(dateStr: string): string {
@@ -35,11 +24,12 @@ function formatDate(dateStr: string): string {
 
 interface ExpenseListProps {
   expenses: Expense[]
-  onDelete: (id: string) => Promise<void>
+  onDelete: (id: string) => Promise<{ error: string | null }>
   loading?: boolean
 }
 
 export function ExpenseList({ expenses, onDelete, loading }: ExpenseListProps) {
+  const { colorsMap } = useCategories()
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
@@ -55,12 +45,8 @@ export function ExpenseList({ expenses, onDelete, loading }: ExpenseListProps) {
   return (
     <Card padding="none">
       <div className="flex items-center justify-between px-5 py-4 border-b border-black/[0.06] dark:border-white/[0.06]">
-        <h3 className="text-sm font-semibold text-text1 dark:text-text1-dark">
-          Últimos gastos
-        </h3>
-        <span className="text-xs text-text2 dark:text-text2-dark">
-          {expenses.length} en total
-        </span>
+        <h3 className="text-sm font-semibold text-text1 dark:text-text1-dark">Últimos gastos</h3>
+        <span className="text-xs text-text2 dark:text-text2-dark">{expenses.length} en total</span>
       </div>
 
       {loading ? (
@@ -74,8 +60,8 @@ export function ExpenseList({ expenses, onDelete, loading }: ExpenseListProps) {
       ) : (
         <ul>
           {recent.map((expense, idx) => {
-            const Icon = CATEGORY_ICONS[expense.categoria]
-            const iconClass = CATEGORY_COLORS[expense.categoria]
+            const Icon = ICON_MAP[expense.categoria] ?? Tag
+            const color = colorsMap[expense.categoria] ?? '#6B7280'
             const isLast = idx === recent.length - 1
 
             return (
@@ -86,12 +72,14 @@ export function ExpenseList({ expenses, onDelete, loading }: ExpenseListProps) {
                   !isLast ? 'border-b border-black/[0.04] dark:border-white/[0.04]' : '',
                 ].join(' ')}
               >
-                {/* Ícono */}
-                <div className={`p-2 rounded-lg flex-shrink-0 ${iconClass}`}>
+                {/* Ícono con color dinámico */}
+                <div
+                  className="p-2 rounded-lg flex-shrink-0"
+                  style={{ background: `${color}20`, color }}
+                >
                   <Icon size={14} />
                 </div>
 
-                {/* Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-text1 dark:text-text1-dark truncate">
@@ -104,23 +92,17 @@ export function ExpenseList({ expenses, onDelete, loading }: ExpenseListProps) {
                     )}
                   </div>
                   {expense.detalle && (
-                    <p className="text-xs text-text2 dark:text-text2-dark truncate">
-                      {expense.detalle}
-                    </p>
+                    <p className="text-xs text-text2 dark:text-text2-dark truncate">{expense.detalle}</p>
                   )}
                 </div>
 
-                {/* Fecha + importe */}
                 <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
                   <span className="text-sm font-semibold text-text1 dark:text-text1-dark">
                     {formatARS(expense.importe)}
                   </span>
-                  <span className="text-[11px] text-text2 dark:text-text2-dark">
-                    {formatDate(expense.fecha)}
-                  </span>
+                  <span className="text-[11px] text-text2 dark:text-text2-dark">{formatDate(expense.fecha)}</span>
                 </div>
 
-                {/* Eliminar */}
                 {confirmId === expense.id ? (
                   <div className="flex items-center gap-1 flex-shrink-0">
                     <button

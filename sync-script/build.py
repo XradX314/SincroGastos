@@ -19,6 +19,8 @@ cmd = [
     "--collect-all", "storage3",
     "--collect-all", "httpx",
     "--collect-all", "httpcore",
+    "--collect-all", "PIL",
+    "--add-data", "logo.png;.",
     "--noconfirm",
     "sync.py",
 ]

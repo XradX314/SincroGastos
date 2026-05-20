@@ -28,25 +28,17 @@ export function Login() {
       >
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary dark:bg-primary-dark shadow-lg mb-4">
-            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-              <path d="M8 20C8 20 10 14 16 14C22 14 24 20 24 20" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
-              <circle cx="16" cy="10" r="3" fill="white" />
-              <path d="M6 26H26" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
-            </svg>
+          <div className="inline-block bg-[#1c1f2e] rounded-2xl px-8 py-4 mb-4">
+            <img src="/logo.png" alt="SincroGastos" className="h-20 w-auto" />
           </div>
-          <h1 className="text-2xl font-bold text-text1 dark:text-text1-dark">SincroGastos</h1>
-          <p className="text-sm text-text2 dark:text-text2-dark mt-1">Control de gastos personales</p>
+          <p className="text-sm text-text2 dark:text-text2-dark">Control de gastos personales</p>
         </div>
 
-        {/* Tarjeta */}
+        {/* Card */}
         <div className="bg-surface dark:bg-surface-dark rounded-2xl shadow-card dark:shadow-card-dark border border-black/[0.06] dark:border-white/[0.06] p-6">
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             <div>
-              <label
-                htmlFor="email"
-                className="block text-xs font-medium text-text2 dark:text-text2-dark mb-1.5"
-              >
+              <label htmlFor="email" className="block text-xs font-medium text-text2 dark:text-text2-dark mb-1.5">
                 Email
               </label>
               <input
@@ -68,10 +60,7 @@ export function Login() {
             </div>
 
             <div>
-              <label
-                htmlFor="password"
-                className="block text-xs font-medium text-text2 dark:text-text2-dark mb-1.5"
-              >
+              <label htmlFor="password" className="block text-xs font-medium text-text2 dark:text-text2-dark mb-1.5">
                 Contraseña
               </label>
               <input
