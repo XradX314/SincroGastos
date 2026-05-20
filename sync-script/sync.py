@@ -545,7 +545,7 @@ class SyncResult:
         self.errors: list[str] = []
 
 
-def sync(cfg: Config, client: Client, user_id: str, log_cb: Any = None) -> SyncResult:
+def sync(cfg: Config, client: Client, user_id: str, token: str, log_cb: Any = None) -> SyncResult:
     result = SyncResult()
 
     def log(msg: str) -> None:
@@ -581,7 +581,10 @@ def sync(cfg: Config, client: Client, user_id: str, log_cb: Any = None) -> SyncR
     if only_in_excel:
         log(f"⬆️  Subiendo {len(only_in_excel)} gastos...")
         try:
-            result.uploaded = upload_expenses(client, list(only_in_excel), user_id)  # type: ignore[arg-type]
+            # Cliente nuevo para cada operación — evita reutilizar la conexión HTTP/2 terminada
+            upload_client = create_client(cfg["supabase_url"], cfg["supabase_key"])
+            upload_client.auth.set_session(token, token)
+            result.uploaded = upload_expenses(upload_client, list(only_in_excel), user_id)  # type: ignore[arg-type]
         except Exception as exc:
             result.errors.append(str(exc))
             log(f"❌ {exc}")
@@ -764,7 +767,7 @@ class SyncApp(tk.Tk):
 
         self._log("🔄 Sincronizando...")
         try:
-            result = sync(self.cfg, self.client, user_id=user_id, log_cb=self._log)  # type: ignore[arg-type]
+            result = sync(self.cfg, self.client, user_id=user_id, token=token, log_cb=self._log)  # type: ignore[arg-type]
         except Exception as exc:
             self._log(f"❌ Error inesperado: {exc}")
             self.progress.stop()
