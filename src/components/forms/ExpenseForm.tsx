@@ -81,11 +81,11 @@ export function ExpenseForm({
     <form onSubmit={handleSubmit} className="space-y-5" noValidate>
       {/* Importe */}
       <div>
-        <label className="block text-xs font-medium text-text2-DEFAULT dark:text-text2-dark mb-1.5">
+        <label className="block text-xs font-medium text-text2 dark:text-text2-dark mb-1.5">
           Importe
         </label>
         <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-lg font-semibold text-text2-DEFAULT dark:text-text2-dark">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-lg font-semibold text-text2 dark:text-text2-dark">
             $
           </span>
           <input
@@ -98,21 +98,21 @@ export function ExpenseForm({
             className={[
               'w-full pl-8 pr-4 py-3 text-2xl font-bold bg-surface-2 dark:bg-surface-2dark',
               'rounded-xl border-2 outline-none transition-all',
-              'text-text1-DEFAULT dark:text-text1-dark placeholder:text-text2-DEFAULT/40',
+              'text-text1 dark:text-text1-dark placeholder:text-text2/40',
               errors.importe
-                ? 'border-danger-DEFAULT'
-                : 'border-transparent focus:border-primary-DEFAULT dark:focus:border-primary-dark',
+                ? 'border-danger'
+                : 'border-transparent focus:border-primary dark:focus:border-primary-dark',
             ].join(' ')}
           />
         </div>
         {errors.importe && (
-          <p className="text-xs text-danger-DEFAULT mt-1">{errors.importe}</p>
+          <p className="text-xs text-danger mt-1">{errors.importe}</p>
         )}
       </div>
 
       {/* Fecha */}
       <div>
-        <label className="block text-xs font-medium text-text2-DEFAULT dark:text-text2-dark mb-1.5">
+        <label className="block text-xs font-medium text-text2 dark:text-text2-dark mb-1.5">
           Fecha
         </label>
         <input
@@ -121,20 +121,20 @@ export function ExpenseForm({
           onChange={(e) => setFecha(e.target.value)}
           className={[
             'w-full px-3 py-2.5 bg-surface-2 dark:bg-surface-2dark rounded-xl border-2 outline-none transition-all',
-            'text-text1-DEFAULT dark:text-text1-dark text-sm',
+            'text-text1 dark:text-text1-dark text-sm',
             errors.fecha
-              ? 'border-danger-DEFAULT'
-              : 'border-transparent focus:border-primary-DEFAULT dark:focus:border-primary-dark',
+              ? 'border-danger'
+              : 'border-transparent focus:border-primary dark:focus:border-primary-dark',
           ].join(' ')}
         />
         {errors.fecha && (
-          <p className="text-xs text-danger-DEFAULT mt-1">{errors.fecha}</p>
+          <p className="text-xs text-danger mt-1">{errors.fecha}</p>
         )}
       </div>
 
       {/* Categoría + subcategoría */}
       <div>
-        <label className="block text-xs font-medium text-text2-DEFAULT dark:text-text2-dark mb-1.5">
+        <label className="block text-xs font-medium text-text2 dark:text-text2-dark mb-1.5">
           Categoría
         </label>
         <CategorySelector
@@ -144,7 +144,7 @@ export function ExpenseForm({
           onSubcategoryChange={(sub) => { setSubcategoria(sub); setErrors((e) => ({ ...e, subcategoria: '' })) }}
         />
         {(errors.categoria || errors.subcategoria) && (
-          <p className="text-xs text-danger-DEFAULT mt-1.5">
+          <p className="text-xs text-danger mt-1.5">
             {errors.categoria || errors.subcategoria}
           </p>
         )}
@@ -152,8 +152,8 @@ export function ExpenseForm({
 
       {/* Detalle */}
       <div>
-        <label className="block text-xs font-medium text-text2-DEFAULT dark:text-text2-dark mb-1.5">
-          Detalle <span className="font-normal text-text2-DEFAULT/60">(opcional)</span>
+        <label className="block text-xs font-medium text-text2 dark:text-text2-dark mb-1.5">
+          Detalle <span className="font-normal text-text2/60">(opcional)</span>
         </label>
         <textarea
           value={detalle}
@@ -162,8 +162,8 @@ export function ExpenseForm({
           placeholder="Ej: Supermercado Coto, AXA seguros..."
           className={[
             'w-full px-3 py-2.5 bg-surface-2 dark:bg-surface-2dark rounded-xl border-2 outline-none transition-all resize-none',
-            'text-text1-DEFAULT dark:text-text1-dark text-sm placeholder:text-text2-DEFAULT/40',
-            'border-transparent focus:border-primary-DEFAULT dark:focus:border-primary-dark',
+            'text-text1 dark:text-text1-dark text-sm placeholder:text-text2/40',
+            'border-transparent focus:border-primary dark:focus:border-primary-dark',
           ].join(' ')}
         />
       </div>

@@ -44,38 +44,38 @@ export function Dashboard() {
   return (
     <div className="min-h-screen bg-bg dark:bg-bg-dark">
       {/* Header */}
-      <header className="sticky top-0 z-30 bg-surface-DEFAULT dark:bg-surface-dark border-b border-black/[0.06] dark:border-white/[0.06] backdrop-blur-sm">
+      <header className="sticky top-0 z-30 bg-surface dark:bg-surface-dark border-b border-black/[0.06] dark:border-white/[0.06] backdrop-blur-sm">
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-primary-DEFAULT dark:bg-primary-dark flex items-center justify-center">
+            <div className="w-7 h-7 rounded-lg bg-primary dark:bg-primary-dark flex items-center justify-center">
               <DollarSign size={14} className="text-white" />
             </div>
-            <span className="font-bold text-text1-DEFAULT dark:text-text1-dark">GastApp</span>
+            <span className="font-bold text-text1 dark:text-text1-dark">GastApp</span>
           </div>
 
           {/* Acciones */}
           <div className="flex items-center gap-2">
-            <span className="hidden sm:block text-xs text-text2-DEFAULT dark:text-text2-dark mr-1">
+            <span className="hidden sm:block text-xs text-text2 dark:text-text2-dark mr-1">
               {user?.email}
             </span>
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-lg text-text2-DEFAULT dark:text-text2-dark hover:bg-surface-2 dark:hover:bg-surface-2dark transition-colors"
+              className="p-2 rounded-lg text-text2 dark:text-text2-dark hover:bg-surface-2 dark:hover:bg-surface-2dark transition-colors"
               aria-label="Cambiar tema"
             >
               {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
             </button>
             <button
               onClick={signOut}
-              className="p-2 rounded-lg text-text2-DEFAULT dark:text-text2-dark hover:bg-surface-2 dark:hover:bg-surface-2dark transition-colors"
+              className="p-2 rounded-lg text-text2 dark:text-text2-dark hover:bg-surface-2 dark:hover:bg-surface-2dark transition-colors"
               aria-label="Cerrar sesión"
             >
               <LogOut size={16} />
             </button>
             <button
               onClick={() => setFormOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-primary-DEFAULT dark:bg-primary-dark text-white text-sm font-medium hover:bg-primary-hover transition-colors ml-1"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-primary dark:bg-primary-dark text-white text-sm font-medium hover:bg-primary-hover transition-colors ml-1"
             >
               <Plus size={16} />
               <span className="hidden sm:inline">Gasto</span>

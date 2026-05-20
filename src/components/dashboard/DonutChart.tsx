@@ -35,14 +35,14 @@ export function DonutChart({ data, title = 'Gasto por categoría' }: DonutChartP
   if (chartData.length === 0) {
     return (
       <Card className="flex items-center justify-center h-64">
-        <p className="text-text2-DEFAULT dark:text-text2-dark text-sm">Sin datos este mes</p>
+        <p className="text-text2 dark:text-text2-dark text-sm">Sin datos este mes</p>
       </Card>
     )
   }
 
   return (
     <Card>
-      <h3 className="text-sm font-semibold text-text1-DEFAULT dark:text-text1-dark mb-4">{title}</h3>
+      <h3 className="text-sm font-semibold text-text1 dark:text-text1-dark mb-4">{title}</h3>
       <div className="relative h-52">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
@@ -73,8 +73,8 @@ export function DonutChart({ data, title = 'Gasto por categoría' }: DonutChartP
         </ResponsiveContainer>
         {/* Texto central */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span className="text-xs text-text2-DEFAULT dark:text-text2-dark">Total</span>
-          <span className="text-base font-bold text-text1-DEFAULT dark:text-text1-dark">
+          <span className="text-xs text-text2 dark:text-text2-dark">Total</span>
+          <span className="text-base font-bold text-text1 dark:text-text1-dark">
             {formatARS(total)}
           </span>
         </div>
@@ -100,10 +100,10 @@ export function DonutChart({ data, title = 'Gasto por categoría' }: DonutChartP
               className="w-2.5 h-2.5 rounded-full flex-shrink-0"
               style={{ background: entry.color }}
             />
-            <span className="text-xs text-text1-DEFAULT dark:text-text1-dark truncate flex-1">
+            <span className="text-xs text-text1 dark:text-text1-dark truncate flex-1">
               {entry.name}
             </span>
-            <span className="text-xs font-medium text-text2-DEFAULT dark:text-text2-dark flex-shrink-0">
+            <span className="text-xs font-medium text-text2 dark:text-text2-dark flex-shrink-0">
               {total > 0 ? `${Math.round((entry.value / total) * 100)}%` : '0%'}
             </span>
           </button>

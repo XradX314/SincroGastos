@@ -55,21 +55,21 @@ export function ExpenseList({ expenses, onDelete, loading }: ExpenseListProps) {
   return (
     <Card padding="none">
       <div className="flex items-center justify-between px-5 py-4 border-b border-black/[0.06] dark:border-white/[0.06]">
-        <h3 className="text-sm font-semibold text-text1-DEFAULT dark:text-text1-dark">
+        <h3 className="text-sm font-semibold text-text1 dark:text-text1-dark">
           Últimos gastos
         </h3>
-        <span className="text-xs text-text2-DEFAULT dark:text-text2-dark">
+        <span className="text-xs text-text2 dark:text-text2-dark">
           {expenses.length} en total
         </span>
       </div>
 
       {loading ? (
         <div className="flex items-center justify-center h-32">
-          <div className="w-5 h-5 border-2 border-primary-DEFAULT border-t-transparent rounded-full animate-spin" />
+          <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
         </div>
       ) : recent.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-32 gap-2">
-          <p className="text-sm text-text2-DEFAULT dark:text-text2-dark">Sin gastos registrados</p>
+          <p className="text-sm text-text2 dark:text-text2-dark">Sin gastos registrados</p>
         </div>
       ) : (
         <ul>
@@ -94,7 +94,7 @@ export function ExpenseList({ expenses, onDelete, loading }: ExpenseListProps) {
                 {/* Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-text1-DEFAULT dark:text-text1-dark truncate">
+                    <span className="text-sm font-medium text-text1 dark:text-text1-dark truncate">
                       {expense.subcategoria}
                     </span>
                     {expense.origen === 'excel' && (
@@ -104,7 +104,7 @@ export function ExpenseList({ expenses, onDelete, loading }: ExpenseListProps) {
                     )}
                   </div>
                   {expense.detalle && (
-                    <p className="text-xs text-text2-DEFAULT dark:text-text2-dark truncate">
+                    <p className="text-xs text-text2 dark:text-text2-dark truncate">
                       {expense.detalle}
                     </p>
                   )}
@@ -112,10 +112,10 @@ export function ExpenseList({ expenses, onDelete, loading }: ExpenseListProps) {
 
                 {/* Fecha + importe */}
                 <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
-                  <span className="text-sm font-semibold text-text1-DEFAULT dark:text-text1-dark">
+                  <span className="text-sm font-semibold text-text1 dark:text-text1-dark">
                     {formatARS(expense.importe)}
                   </span>
-                  <span className="text-[11px] text-text2-DEFAULT dark:text-text2-dark">
+                  <span className="text-[11px] text-text2 dark:text-text2-dark">
                     {formatDate(expense.fecha)}
                   </span>
                 </div>
@@ -126,14 +126,14 @@ export function ExpenseList({ expenses, onDelete, loading }: ExpenseListProps) {
                     <button
                       onClick={() => handleDelete(expense.id)}
                       disabled={deletingId === expense.id}
-                      className="flex items-center gap-1 px-2 py-1 rounded-lg bg-danger-DEFAULT text-white text-xs font-medium disabled:opacity-50"
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg bg-danger text-white text-xs font-medium disabled:opacity-50"
                     >
                       <AlertTriangle size={11} />
                       {deletingId === expense.id ? '...' : 'Sí'}
                     </button>
                     <button
                       onClick={() => setConfirmId(null)}
-                      className="px-2 py-1 rounded-lg text-xs text-text2-DEFAULT dark:text-text2-dark hover:bg-surface-2 dark:hover:bg-surface-2dark"
+                      className="px-2 py-1 rounded-lg text-xs text-text2 dark:text-text2-dark hover:bg-surface-2 dark:hover:bg-surface-2dark"
                     >
                       No
                     </button>
@@ -146,7 +146,7 @@ export function ExpenseList({ expenses, onDelete, loading }: ExpenseListProps) {
                     className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 !p-1.5"
                     aria-label="Eliminar gasto"
                   >
-                    <Trash2 size={14} className="text-text2-DEFAULT dark:text-text2-dark" />
+                    <Trash2 size={14} className="text-text2 dark:text-text2-dark" />
                   </Button>
                 )}
               </li>

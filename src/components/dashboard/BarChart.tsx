@@ -47,21 +47,21 @@ export function buildLast6MonthsData(
 export function BarChart({ data, title = 'Últimos 6 meses' }: BarChartProps) {
   return (
     <Card>
-      <h3 className="text-sm font-semibold text-text1-DEFAULT dark:text-text1-dark mb-4">{title}</h3>
+      <h3 className="text-sm font-semibold text-text1 dark:text-text1-dark mb-4">{title}</h3>
       <div className="h-52">
         <ResponsiveContainer width="100%" height="100%">
           <RechartsBarChart data={data} barSize={32} margin={{ top: 4, right: 4, left: 4, bottom: 0 }}>
             <XAxis
               dataKey="label"
               tick={{ fontSize: 12, fill: 'currentColor' }}
-              className="text-text2-DEFAULT dark:text-text2-dark"
+              className="text-text2 dark:text-text2-dark"
               axisLine={false}
               tickLine={false}
             />
             <YAxis
               tickFormatter={formatARSCompact}
               tick={{ fontSize: 11, fill: 'currentColor' }}
-              className="text-text2-DEFAULT dark:text-text2-dark"
+              className="text-text2 dark:text-text2-dark"
               axisLine={false}
               tickLine={false}
               width={52}

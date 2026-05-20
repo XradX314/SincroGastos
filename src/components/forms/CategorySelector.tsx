@@ -80,7 +80,7 @@ export function CategorySelector({
             transition={{ duration: 0.2, ease: 'easeInOut' }}
             className="overflow-hidden"
           >
-            <p className="text-xs font-medium text-text2-DEFAULT dark:text-text2-dark mb-2">
+            <p className="text-xs font-medium text-text2 dark:text-text2-dark mb-2">
               Subcategoría
             </p>
             <div className="flex flex-wrap gap-2">
@@ -98,7 +98,7 @@ export function CategorySelector({
                       'px-3 py-1.5 rounded-full text-xs font-medium border transition-all',
                       isActive
                         ? 'text-white border-transparent'
-                        : 'bg-surface-2 dark:bg-surface-2dark border-transparent text-text2-DEFAULT dark:text-text2-dark hover:border-black/10 dark:hover:border-white/10',
+                        : 'bg-surface-2 dark:bg-surface-2dark border-transparent text-text2 dark:text-text2-dark hover:border-black/10 dark:hover:border-white/10',
                     ].join(' ')}
                     style={isActive ? { background: color, borderColor: color } : {}}
                   >

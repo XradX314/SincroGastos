@@ -10,7 +10,7 @@
   }
 
   body {
-    @apply bg-bg text-text1-DEFAULT transition-colors duration-200;
+    @apply bg-bg text-text1 transition-colors duration-200;
   }
 
   .dark body {
@@ -18,7 +18,7 @@
   }
 
   * {
-    @apply border-border-DEFAULT;
+    @apply border-border;
   }
 
   .dark * {
@@ -39,7 +39,7 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-text2-DEFAULT rounded-full;
+    @apply bg-text2 rounded-full;
   }
 
   .dark ::-webkit-scrollbar-thumb {

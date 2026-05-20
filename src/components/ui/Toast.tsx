@@ -50,9 +50,9 @@ function ToastItem({ toast, onRemove }: { toast: ToastMessage; onRemove: (id: st
   }, [])
 
   const icons = {
-    success: <CheckCircle size={18} className="text-teal-DEFAULT" />,
-    error: <XCircle size={18} className="text-danger-DEFAULT" />,
-    info: <Info size={18} className="text-primary-DEFAULT" />,
+    success: <CheckCircle size={18} className="text-teal" />,
+    error: <XCircle size={18} className="text-danger" />,
+    info: <Info size={18} className="text-primary" />,
   }
 
   return (
@@ -61,21 +61,21 @@ function ToastItem({ toast, onRemove }: { toast: ToastMessage; onRemove: (id: st
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 10, scale: 0.95 }}
       transition={{ duration: 0.2 }}
-      className="pointer-events-auto relative overflow-hidden bg-surface-DEFAULT dark:bg-surface-dark rounded-xl shadow-lg border border-black/10 dark:border-white/10 px-4 py-3 flex items-center gap-3 min-w-[280px] max-w-sm"
+      className="pointer-events-auto relative overflow-hidden bg-surface dark:bg-surface-dark rounded-xl shadow-lg border border-black/10 dark:border-white/10 px-4 py-3 flex items-center gap-3 min-w-[280px] max-w-sm"
     >
       {icons[toast.type]}
-      <span className="text-sm font-medium text-text1-DEFAULT dark:text-text1-dark flex-1">
+      <span className="text-sm font-medium text-text1 dark:text-text1-dark flex-1">
         {toast.message}
       </span>
       <button
         onClick={() => onRemove(toast.id)}
-        className="text-text2-DEFAULT dark:text-text2-dark hover:text-text1-DEFAULT dark:hover:text-text1-dark transition-colors"
+        className="text-text2 dark:text-text2-dark hover:text-text1 dark:hover:text-text1-dark transition-colors"
       >
         <X size={14} />
       </button>
       {/* Barra de progreso */}
       <div
-        className="absolute bottom-0 left-0 h-0.5 bg-primary-DEFAULT dark:bg-primary-dark transition-all duration-75"
+        className="absolute bottom-0 left-0 h-0.5 bg-primary dark:bg-primary-dark transition-all duration-75"
         style={{ width: `${progress}%` }}
       />
     </motion.div>

@@ -13,13 +13,13 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<Variant, string> = {
   primary:
-    'bg-primary-DEFAULT hover:bg-primary-hover text-white dark:bg-primary-dark dark:hover:bg-primary-DEFAULT',
+    'bg-primary hover:bg-primary-hover text-white dark:bg-primary-dark dark:hover:bg-primary',
   secondary:
-    'bg-surface-2 hover:bg-surface-DEFAULT text-text1-DEFAULT dark:bg-surface-2dark dark:hover:bg-surface-dark dark:text-text1-dark border border-black/10 dark:border-white/10',
+    'bg-surface-2 hover:bg-surface text-text1 dark:bg-surface-2dark dark:hover:bg-surface-dark dark:text-text1-dark border border-black/10 dark:border-white/10',
   danger:
-    'bg-danger-DEFAULT hover:bg-red-700 text-white',
+    'bg-danger hover:bg-red-700 text-white',
   ghost:
-    'bg-transparent hover:bg-surface-2 text-text1-DEFAULT dark:hover:bg-surface-2dark dark:text-text1-dark',
+    'bg-transparent hover:bg-surface-2 text-text1 dark:hover:bg-surface-2dark dark:text-text1-dark',
 }
 
 const sizeClasses: Record<Size, string> = {
@@ -43,7 +43,7 @@ export function Button({
     <button
       className={[
         'inline-flex items-center justify-center font-medium transition-all duration-150',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-DEFAULT/50',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50',
         'disabled:opacity-50 disabled:cursor-not-allowed',
         variantClasses[variant],
         sizeClasses[size],

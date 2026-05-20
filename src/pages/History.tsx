@@ -89,8 +89,8 @@ export function History() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-6 space-y-4">
       <div className="flex items-center gap-3">
-        <Filter size={20} className="text-primary-DEFAULT dark:text-primary-dark" />
-        <h1 className="text-xl font-bold text-text1-DEFAULT dark:text-text1-dark">Historial</h1>
+        <Filter size={20} className="text-primary dark:text-primary-dark" />
+        <h1 className="text-xl font-bold text-text1 dark:text-text1-dark">Historial</h1>
       </div>
 
       {/* Filtros */}
@@ -98,13 +98,13 @@ export function History() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {/* Buscador */}
           <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text2-DEFAULT dark:text-text2-dark" />
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text2 dark:text-text2-dark" />
             <input
               type="text"
               placeholder="Buscar..."
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-              className="w-full pl-8 pr-3 py-2 text-sm rounded-xl bg-surface-2 dark:bg-surface-2dark border-2 border-transparent focus:border-primary-DEFAULT dark:focus:border-primary-dark outline-none transition-all text-text1-DEFAULT dark:text-text1-dark"
+              className="w-full pl-8 pr-3 py-2 text-sm rounded-xl bg-surface-2 dark:bg-surface-2dark border-2 border-transparent focus:border-primary dark:focus:border-primary-dark outline-none transition-all text-text1 dark:text-text1-dark"
             />
           </div>
 
@@ -112,7 +112,7 @@ export function History() {
           <select
             value={filterMonth}
             onChange={(e) => { setFilterMonth(e.target.value); setPage(1) }}
-            className="py-2 px-3 text-sm rounded-xl bg-surface-2 dark:bg-surface-2dark border-2 border-transparent focus:border-primary-DEFAULT dark:focus:border-primary-dark outline-none transition-all text-text1-DEFAULT dark:text-text1-dark"
+            className="py-2 px-3 text-sm rounded-xl bg-surface-2 dark:bg-surface-2dark border-2 border-transparent focus:border-primary dark:focus:border-primary-dark outline-none transition-all text-text1 dark:text-text1-dark"
           >
             {MONTHS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
           </select>
@@ -121,7 +121,7 @@ export function History() {
           <select
             value={filterCat}
             onChange={(e) => { setFilterCat(e.target.value as CategoryName | ''); setFilterSub(''); setPage(1) }}
-            className="py-2 px-3 text-sm rounded-xl bg-surface-2 dark:bg-surface-2dark border-2 border-transparent focus:border-primary-DEFAULT dark:focus:border-primary-dark outline-none transition-all text-text1-DEFAULT dark:text-text1-dark"
+            className="py-2 px-3 text-sm rounded-xl bg-surface-2 dark:bg-surface-2dark border-2 border-transparent focus:border-primary dark:focus:border-primary-dark outline-none transition-all text-text1 dark:text-text1-dark"
           >
             <option value="">Todas las categorías</option>
             {CATEGORY_NAMES.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -132,7 +132,7 @@ export function History() {
             value={filterSub}
             disabled={!filterCat}
             onChange={(e) => { setFilterSub(e.target.value); setPage(1) }}
-            className="py-2 px-3 text-sm rounded-xl bg-surface-2 dark:bg-surface-2dark border-2 border-transparent focus:border-primary-DEFAULT dark:focus:border-primary-dark outline-none transition-all text-text1-DEFAULT dark:text-text1-dark disabled:opacity-50"
+            className="py-2 px-3 text-sm rounded-xl bg-surface-2 dark:bg-surface-2dark border-2 border-transparent focus:border-primary dark:focus:border-primary-dark outline-none transition-all text-text1 dark:text-text1-dark disabled:opacity-50"
           >
             <option value="">Todas las subcategorías</option>
             {subcategories.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -141,7 +141,7 @@ export function History() {
       </Card>
 
       {/* Resultados */}
-      <div className="flex items-center justify-between text-xs text-text2-DEFAULT dark:text-text2-dark px-1">
+      <div className="flex items-center justify-between text-xs text-text2 dark:text-text2-dark px-1">
         <span>{filtered.length} resultado{filtered.length !== 1 ? 's' : ''}</span>
         {filtered.length > 0 && (
           <span>Pág. {page} de {totalPages}</span>
@@ -151,11 +151,11 @@ export function History() {
       {/* Lista */}
       {loading ? (
         <Card className="flex items-center justify-center h-32">
-          <div className="w-5 h-5 border-2 border-primary-DEFAULT border-t-transparent rounded-full animate-spin" />
+          <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
         </Card>
       ) : filtered.length === 0 ? (
         <Card className="flex items-center justify-center h-32">
-          <p className="text-sm text-text2-DEFAULT dark:text-text2-dark">Sin resultados</p>
+          <p className="text-sm text-text2 dark:text-text2-dark">Sin resultados</p>
         </Card>
       ) : (
         <Card padding="none">
@@ -172,7 +172,7 @@ export function History() {
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-sm font-medium text-text1-DEFAULT dark:text-text1-dark truncate">
+                      <span className="text-sm font-medium text-text1 dark:text-text1-dark truncate">
                         {expense.categoria} · {expense.subcategoria}
                       </span>
                       {expense.origen === 'excel' && (
@@ -182,12 +182,12 @@ export function History() {
                       )}
                     </div>
                     {expense.detalle && (
-                      <p className="text-xs text-text2-DEFAULT dark:text-text2-dark truncate">{expense.detalle}</p>
+                      <p className="text-xs text-text2 dark:text-text2-dark truncate">{expense.detalle}</p>
                     )}
-                    <p className="text-[11px] text-text2-DEFAULT dark:text-text2-dark mt-0.5">{formatDateFull(expense.fecha)}</p>
+                    <p className="text-[11px] text-text2 dark:text-text2-dark mt-0.5">{formatDateFull(expense.fecha)}</p>
                   </div>
 
-                  <span className="text-sm font-semibold text-text1-DEFAULT dark:text-text1-dark flex-shrink-0">
+                  <span className="text-sm font-semibold text-text1 dark:text-text1-dark flex-shrink-0">
                     {formatARS(expense.importe)}
                   </span>
 
@@ -195,7 +195,7 @@ export function History() {
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                     <button
                       onClick={() => setEditExpense(expense)}
-                      className="p-1.5 rounded-lg text-text2-DEFAULT dark:text-text2-dark hover:bg-surface-DEFAULT dark:hover:bg-surface-dark transition-colors"
+                      className="p-1.5 rounded-lg text-text2 dark:text-text2-dark hover:bg-surface dark:hover:bg-surface-dark transition-colors"
                     >
                       <Pencil size={13} />
                     </button>
@@ -204,14 +204,14 @@ export function History() {
                         <button
                           onClick={() => handleDelete(expense.id)}
                           disabled={deletingId === expense.id}
-                          className="flex items-center gap-0.5 px-1.5 py-1 rounded-lg bg-danger-DEFAULT text-white text-[10px] font-medium"
+                          className="flex items-center gap-0.5 px-1.5 py-1 rounded-lg bg-danger text-white text-[10px] font-medium"
                         >
                           <AlertTriangle size={10} />
                           {deletingId === expense.id ? '...' : 'Sí'}
                         </button>
                         <button
                           onClick={() => setConfirmDelete(null)}
-                          className="px-1.5 py-1 rounded-lg text-[10px] text-text2-DEFAULT dark:text-text2-dark hover:bg-surface-DEFAULT dark:hover:bg-surface-dark"
+                          className="px-1.5 py-1 rounded-lg text-[10px] text-text2 dark:text-text2-dark hover:bg-surface dark:hover:bg-surface-dark"
                         >
                           No
                         </button>
@@ -219,7 +219,7 @@ export function History() {
                     ) : (
                       <button
                         onClick={() => setConfirmDelete(expense.id)}
-                        className="p-1.5 rounded-lg text-text2-DEFAULT dark:text-text2-dark hover:bg-surface-DEFAULT dark:hover:bg-surface-dark transition-colors"
+                        className="p-1.5 rounded-lg text-text2 dark:text-text2-dark hover:bg-surface dark:hover:bg-surface-dark transition-colors"
                       >
                         <Trash2 size={13} />
                       </button>
@@ -238,7 +238,7 @@ export function History() {
           <Button variant="secondary" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>
             <ChevronLeft size={14} />
           </Button>
-          <span className="text-sm text-text2-DEFAULT dark:text-text2-dark px-2">
+          <span className="text-sm text-text2 dark:text-text2-dark px-2">
             {page} / {totalPages}
           </span>
           <Button variant="secondary" size="sm" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}>

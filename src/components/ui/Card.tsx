@@ -19,7 +19,7 @@ export function Card({ children, className = '', padding = 'md', onClick }: Card
     <div
       onClick={onClick}
       className={[
-        'bg-surface-DEFAULT dark:bg-surface-dark rounded-2xl shadow-card dark:shadow-card-dark',
+        'bg-surface dark:bg-surface-dark rounded-2xl shadow-card dark:shadow-card-dark',
         'border border-black/[0.06] dark:border-white/[0.06]',
         paddingClasses[padding],
         onClick ? 'cursor-pointer hover:shadow-md transition-shadow' : '',

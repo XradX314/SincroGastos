@@ -53,7 +53,7 @@ export function Modal({ open, onClose, title, children, maxWidth = 'md' }: Modal
           {/* Panel */}
           <motion.div
             className={[
-              'relative w-full bg-surface-DEFAULT dark:bg-surface-dark rounded-2xl shadow-2xl',
+              'relative w-full bg-surface dark:bg-surface-dark rounded-2xl shadow-2xl',
               'border border-black/[0.08] dark:border-white/[0.08]',
               maxWidthClasses[maxWidth],
             ].join(' ')}
@@ -65,12 +65,12 @@ export function Modal({ open, onClose, title, children, maxWidth = 'md' }: Modal
             {/* Header */}
             {title && (
               <div className="flex items-center justify-between px-5 pt-5 pb-0">
-                <h2 className="text-lg font-semibold text-text1-DEFAULT dark:text-text1-dark">
+                <h2 className="text-lg font-semibold text-text1 dark:text-text1-dark">
                   {title}
                 </h2>
                 <button
                   onClick={onClose}
-                  className="p-1.5 rounded-lg text-text2-DEFAULT dark:text-text2-dark hover:bg-surface-2 dark:hover:bg-surface-2dark transition-colors"
+                  className="p-1.5 rounded-lg text-text2 dark:text-text2-dark hover:bg-surface-2 dark:hover:bg-surface-2dark transition-colors"
                   aria-label="Cerrar"
                 >
                   <X size={18} />
@@ -82,7 +82,7 @@ export function Modal({ open, onClose, title, children, maxWidth = 'md' }: Modal
             {!title && (
               <button
                 onClick={onClose}
-                className="absolute top-4 right-4 p-1.5 rounded-lg text-text2-DEFAULT dark:text-text2-dark hover:bg-surface-2 dark:hover:bg-surface-2dark transition-colors"
+                className="absolute top-4 right-4 p-1.5 rounded-lg text-text2 dark:text-text2-dark hover:bg-surface-2 dark:hover:bg-surface-2dark transition-colors"
                 aria-label="Cerrar"
               >
                 <X size={18} />

@@ -103,35 +103,35 @@ export function ReportTable({ report }: ReportTableProps) {
           <thead>
             <tr className="bg-surface-2 dark:bg-surface-2dark sticky top-0 z-10">
               {/* Sticky first col */}
-              <th className="sticky left-0 z-20 bg-surface-2 dark:bg-surface-2dark text-left px-4 py-3 font-semibold text-text1-DEFAULT dark:text-text1-dark border-b border-black/[0.06] dark:border-white/[0.06]" style={{ minWidth: 160 }}>
+              <th className="sticky left-0 z-20 bg-surface-2 dark:bg-surface-2dark text-left px-4 py-3 font-semibold text-text1 dark:text-text1-dark border-b border-black/[0.06] dark:border-white/[0.06]" style={{ minWidth: 160 }}>
                 Categoría
               </th>
               {MONTHS.map((m) => (
-                <th key={m} className="px-3 py-3 text-right font-semibold text-text1-DEFAULT dark:text-text1-dark border-b border-black/[0.06] dark:border-white/[0.06] whitespace-nowrap">
+                <th key={m} className="px-3 py-3 text-right font-semibold text-text1 dark:text-text1-dark border-b border-black/[0.06] dark:border-white/[0.06] whitespace-nowrap">
                   {m}
                 </th>
               ))}
-              <th className="px-3 py-3 text-right font-bold text-text1-DEFAULT dark:text-text1-dark border-b border-black/[0.06] dark:border-white/[0.06]">Total</th>
-              <th className="px-3 py-3 text-right font-semibold text-text2-DEFAULT dark:text-text2-dark border-b border-black/[0.06] dark:border-white/[0.06]">%</th>
+              <th className="px-3 py-3 text-right font-bold text-text1 dark:text-text1-dark border-b border-black/[0.06] dark:border-white/[0.06]">Total</th>
+              <th className="px-3 py-3 text-right font-semibold text-text2 dark:text-text2-dark border-b border-black/[0.06] dark:border-white/[0.06]">%</th>
             </tr>
           </thead>
           <tbody>
             {report.categories.map((cat) => (
               <>
                 {/* Fila de categoría */}
-                <tr key={cat.categoria} className="bg-surface-DEFAULT dark:bg-surface-dark border-t border-black/[0.04] dark:border-white/[0.04]">
-                  <td className="sticky left-0 z-10 bg-surface-DEFAULT dark:bg-surface-dark px-4 py-2.5 font-semibold text-text1-DEFAULT dark:text-text1-dark border-r border-black/[0.06] dark:border-white/[0.06]">
+                <tr key={cat.categoria} className="bg-surface dark:bg-surface-dark border-t border-black/[0.04] dark:border-white/[0.04]">
+                  <td className="sticky left-0 z-10 bg-surface dark:bg-surface-dark px-4 py-2.5 font-semibold text-text1 dark:text-text1-dark border-r border-black/[0.06] dark:border-white/[0.06]">
                     {cat.categoria}
                   </td>
                   {cat.months.map((v, i) => (
-                    <td key={i} className="px-3 py-2.5 text-right font-semibold text-text1-DEFAULT dark:text-text1-dark whitespace-nowrap">
+                    <td key={i} className="px-3 py-2.5 text-right font-semibold text-text1 dark:text-text1-dark whitespace-nowrap">
                       {fmt(v)}
                     </td>
                   ))}
-                  <td className="px-3 py-2.5 text-right font-bold text-text1-DEFAULT dark:text-text1-dark whitespace-nowrap">
+                  <td className="px-3 py-2.5 text-right font-bold text-text1 dark:text-text1-dark whitespace-nowrap">
                     {fmt(cat.total)}
                   </td>
-                  <td className="px-3 py-2.5 text-right text-text2-DEFAULT dark:text-text2-dark">
+                  <td className="px-3 py-2.5 text-right text-text2 dark:text-text2-dark">
                     {pct(cat.total, report.grandTotal)}
                   </td>
                 </tr>
@@ -139,18 +139,18 @@ export function ReportTable({ report }: ReportTableProps) {
                 {/* Filas de subcategorías */}
                 {cat.subcategories.map((sub) => (
                   <tr key={`${cat.categoria}-${sub.subcategoria}`} className="hover:bg-surface-2 dark:hover:bg-surface-2dark transition-colors">
-                    <td className="sticky left-0 z-10 bg-surface-DEFAULT dark:bg-surface-dark hover:bg-surface-2 dark:hover:bg-surface-2dark px-4 py-2 pl-8 text-text2-DEFAULT dark:text-text2-dark border-r border-black/[0.06] dark:border-white/[0.06] transition-colors">
+                    <td className="sticky left-0 z-10 bg-surface dark:bg-surface-dark hover:bg-surface-2 dark:hover:bg-surface-2dark px-4 py-2 pl-8 text-text2 dark:text-text2-dark border-r border-black/[0.06] dark:border-white/[0.06] transition-colors">
                       {sub.subcategoria}
                     </td>
                     {sub.months.map((v, i) => (
-                      <td key={i} className="px-3 py-2 text-right text-text2-DEFAULT dark:text-text2-dark whitespace-nowrap">
+                      <td key={i} className="px-3 py-2 text-right text-text2 dark:text-text2-dark whitespace-nowrap">
                         {fmt(v)}
                       </td>
                     ))}
-                    <td className="px-3 py-2 text-right text-text1-DEFAULT dark:text-text1-dark font-medium whitespace-nowrap">
+                    <td className="px-3 py-2 text-right text-text1 dark:text-text1-dark font-medium whitespace-nowrap">
                       {fmt(sub.total)}
                     </td>
-                    <td className="px-3 py-2 text-right text-text2-DEFAULT dark:text-text2-dark">
+                    <td className="px-3 py-2 text-right text-text2 dark:text-text2-dark">
                       {pct(sub.total, report.grandTotal)}
                     </td>
                   </tr>
@@ -159,19 +159,19 @@ export function ReportTable({ report }: ReportTableProps) {
             ))}
 
             {/* Fila de totales */}
-            <tr className="bg-primary-DEFAULT/5 dark:bg-primary-dark/5 border-t-2 border-primary-DEFAULT/20 dark:border-primary-dark/20 sticky bottom-0">
-              <td className="sticky left-0 z-10 bg-primary-DEFAULT/5 dark:bg-primary-dark/5 px-4 py-3 font-bold text-text1-DEFAULT dark:text-text1-dark border-r border-black/[0.06] dark:border-white/[0.06]">
+            <tr className="bg-primary/5 dark:bg-primary-dark/5 border-t-2 border-primary/20 dark:border-primary-dark/20 sticky bottom-0">
+              <td className="sticky left-0 z-10 bg-primary/5 dark:bg-primary-dark/5 px-4 py-3 font-bold text-text1 dark:text-text1-dark border-r border-black/[0.06] dark:border-white/[0.06]">
                 TOTAL
               </td>
               {report.monthTotals.map((v, i) => (
-                <td key={i} className="px-3 py-3 text-right font-bold text-text1-DEFAULT dark:text-text1-dark whitespace-nowrap">
+                <td key={i} className="px-3 py-3 text-right font-bold text-text1 dark:text-text1-dark whitespace-nowrap">
                   {fmt(v)}
                 </td>
               ))}
-              <td className="px-3 py-3 text-right font-bold text-primary-DEFAULT dark:text-primary-dark whitespace-nowrap">
+              <td className="px-3 py-3 text-right font-bold text-primary dark:text-primary-dark whitespace-nowrap">
                 {fmt(report.grandTotal)}
               </td>
-              <td className="px-3 py-3 text-right font-bold text-text1-DEFAULT dark:text-text1-dark">
+              <td className="px-3 py-3 text-right font-bold text-text1 dark:text-text1-dark">
                 100%
               </td>
             </tr>

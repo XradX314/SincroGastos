@@ -17,7 +17,7 @@ function PrivateRoute({ children }: { children: ReactNode }) {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-bg dark:bg-bg-dark">
-        <div className="w-8 h-8 border-3 border-primary-DEFAULT border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
@@ -36,14 +36,14 @@ function AppLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-bg dark:bg-bg-dark">
       {/* Header global */}
-      <header className="sticky top-0 z-30 bg-surface-DEFAULT dark:bg-surface-dark border-b border-black/[0.06] dark:border-white/[0.06]">
+      <header className="sticky top-0 z-30 bg-surface dark:bg-surface-dark border-b border-black/[0.06] dark:border-white/[0.06]">
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-primary-DEFAULT dark:bg-primary-dark flex items-center justify-center">
+              <div className="w-7 h-7 rounded-lg bg-primary dark:bg-primary-dark flex items-center justify-center">
                 <DollarSign size={14} className="text-white" />
               </div>
-              <span className="font-bold text-text1-DEFAULT dark:text-text1-dark">GastApp</span>
+              <span className="font-bold text-text1 dark:text-text1-dark">GastApp</span>
             </div>
 
             {/* Navegación */}
@@ -54,8 +54,8 @@ function AppLayout({ children }: { children: ReactNode }) {
                 className={({ isActive }) =>
                   `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                     isActive
-                      ? 'bg-primary-DEFAULT/10 text-primary-DEFAULT dark:bg-primary-dark/10 dark:text-primary-dark'
-                      : 'text-text2-DEFAULT dark:text-text2-dark hover:text-text1-DEFAULT dark:hover:text-text1-dark hover:bg-surface-2 dark:hover:bg-surface-2dark'
+                      ? 'bg-primary/10 text-primary dark:bg-primary-dark/10 dark:text-primary-dark'
+                      : 'text-text2 dark:text-text2-dark hover:text-text1 dark:hover:text-text1-dark hover:bg-surface-2 dark:hover:bg-surface-2dark'
                   }`
                 }
               >
@@ -67,8 +67,8 @@ function AppLayout({ children }: { children: ReactNode }) {
                 className={({ isActive }) =>
                   `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                     isActive
-                      ? 'bg-primary-DEFAULT/10 text-primary-DEFAULT dark:bg-primary-dark/10 dark:text-primary-dark'
-                      : 'text-text2-DEFAULT dark:text-text2-dark hover:text-text1-DEFAULT dark:hover:text-text1-dark hover:bg-surface-2 dark:hover:bg-surface-2dark'
+                      ? 'bg-primary/10 text-primary dark:bg-primary-dark/10 dark:text-primary-dark'
+                      : 'text-text2 dark:text-text2-dark hover:text-text1 dark:hover:text-text1-dark hover:bg-surface-2 dark:hover:bg-surface-2dark'
                   }`
                 }
               >
@@ -80,8 +80,8 @@ function AppLayout({ children }: { children: ReactNode }) {
                 className={({ isActive }) =>
                   `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                     isActive
-                      ? 'bg-primary-DEFAULT/10 text-primary-DEFAULT dark:bg-primary-dark/10 dark:text-primary-dark'
-                      : 'text-text2-DEFAULT dark:text-text2-dark hover:text-text1-DEFAULT dark:hover:text-text1-dark hover:bg-surface-2 dark:hover:bg-surface-2dark'
+                      ? 'bg-primary/10 text-primary dark:bg-primary-dark/10 dark:text-primary-dark'
+                      : 'text-text2 dark:text-text2-dark hover:text-text1 dark:hover:text-text1-dark hover:bg-surface-2 dark:hover:bg-surface-2dark'
                   }`
                 }
               >
@@ -92,18 +92,18 @@ function AppLayout({ children }: { children: ReactNode }) {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="hidden md:block text-xs text-text2-DEFAULT dark:text-text2-dark">
+            <span className="hidden md:block text-xs text-text2 dark:text-text2-dark">
               {user?.email}
             </span>
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-lg text-text2-DEFAULT dark:text-text2-dark hover:bg-surface-2 dark:hover:bg-surface-2dark transition-colors"
+              className="p-2 rounded-lg text-text2 dark:text-text2-dark hover:bg-surface-2 dark:hover:bg-surface-2dark transition-colors"
             >
               {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
             </button>
             <button
               onClick={signOut}
-              className="p-2 rounded-lg text-text2-DEFAULT dark:text-text2-dark hover:bg-surface-2 dark:hover:bg-surface-2dark transition-colors"
+              className="p-2 rounded-lg text-text2 dark:text-text2-dark hover:bg-surface-2 dark:hover:bg-surface-2dark transition-colors"
             >
               <LogOut size={16} />
             </button>
@@ -115,7 +115,7 @@ function AppLayout({ children }: { children: ReactNode }) {
       <main>{children}</main>
 
       {/* Nav mobile bottom */}
-      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-30 bg-surface-DEFAULT dark:bg-surface-dark border-t border-black/[0.06] dark:border-white/[0.06] flex">
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-30 bg-surface dark:bg-surface-dark border-t border-black/[0.06] dark:border-white/[0.06] flex">
         {[
           { to: '/', icon: DollarSign, label: 'Inicio', end: true },
           { to: '/reports', icon: BarChart2, label: 'Reportes', end: false },
@@ -128,8 +128,8 @@ function AppLayout({ children }: { children: ReactNode }) {
             className={({ isActive }) =>
               `flex-1 flex flex-col items-center gap-1 py-3 text-[10px] font-medium transition-colors ${
                 isActive
-                  ? 'text-primary-DEFAULT dark:text-primary-dark'
-                  : 'text-text2-DEFAULT dark:text-text2-dark'
+                  ? 'text-primary dark:text-primary-dark'
+                  : 'text-text2 dark:text-text2-dark'
               }`
             }
           >
