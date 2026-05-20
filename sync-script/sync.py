@@ -145,13 +145,19 @@ def decrypt_token(encrypted_b64: str, salt_hex: str, password: str) -> str:
 # Hash (mismo algoritmo que el frontend)
 # ─────────────────────────────────────────────────────────────
 
+def _importe_str(value: Any) -> str:
+    """Misma representación que JS String(): entero si no tiene decimales (100 → '100', no '100.0')."""
+    f = float(value)
+    return str(int(f)) if f == int(f) else str(f)
+
+
 def generate_hash(row: ExpenseRow) -> str:
     raw = "|".join([
         row["categoria"],
         row["subcategoria"],
         row["fecha"],
         row.get("detalle") or "",
-        str(row["importe"]),
+        _importe_str(row["importe"]),
     ])
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
@@ -330,13 +336,25 @@ def _fallback_date(sheet_name: str) -> str:
 
 
 def _detect_col_offset(all_rows: list[tuple[Any, ...]]) -> int:
-    """Detecta en qué columna empieza CATEGORÍA (0=A, 1=B, etc.)."""
+    """Índice 0-based dentro de la tupla iter_rows donde está CATEGORÍA (para lectura)."""
     keywords = {"CATEGORÍA", "CATEGORIA", "CATEGORY"}
     for row in all_rows:
         for col_idx, cell in enumerate(row):
             if cell and str(cell).strip().upper().replace("�", "Í") in keywords:
                 return col_idx
     return 1  # default: columna B (layout SincroGastos)
+
+
+def _detect_col_start_abs(ws: Any) -> int:
+    """Columna 1-based (número real de Excel) donde comienza CATEGORÍA (para escritura)."""
+    keywords = {"CATEGORÍA", "CATEGORIA", "CATEGORY"}
+    for row in ws.iter_rows(min_row=1, max_row=40):
+        for cell in row:
+            if cell.value:
+                v = str(cell.value).strip().upper().replace("Í", "I")
+                if v in {"CATEGORIA", "CATEGORY"}:
+                    return cell.column
+    return 2  # default: columna B
 
 
 def _is_total_row(cells: list[Any], col: int) -> bool:
@@ -500,9 +518,8 @@ def write_expenses_to_excel(excel_path: str, rows: list[dict[str, Any]]) -> int:
 
     for tab_name, tab_rows in by_tab.items():
         ws = wb[tab_name]
-        # Detectar columna de inicio primero (necesario para _find_total_row)
-        all_ws_rows = list(ws.iter_rows(values_only=True))
-        col_start = _detect_col_offset(all_ws_rows) + 1  # convertir a 1-indexed
+        # col_start: número de columna 1-based real (ej. 2 = columna B)
+        col_start = _detect_col_start_abs(ws)
         total_idx = _find_total_row(ws, col_start)
 
         for row_data in tab_rows:
