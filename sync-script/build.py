@@ -1,5 +1,5 @@
 """
-Genera GastApp-Sync.exe en la carpeta dist/
+Genera SincroGastos.exe en la carpeta dist/
 Uso: python build.py
 """
 import subprocess, sys
@@ -8,7 +8,7 @@ cmd = [
     sys.executable, "-m", "PyInstaller",
     "--onefile",
     "--windowed",
-    "--name", "GastApp-Sync",
+    "--name", "SincroGastos",
     "--hidden-import", "openpyxl.cell._writer",
     "--hidden-import", "cryptography.hazmat.backends.openssl",
     "--hidden-import", "cryptography.hazmat.primitives.kdf.pbkdf2",
@@ -28,7 +28,7 @@ from pathlib import Path
 if Path("icon.ico").exists():
     cmd += ["--icon", "icon.ico"]
 
-print("Construyendo GastApp-Sync.exe...")
+print("Construyendo SincroGastos.exe...")
 print(" ".join(cmd))
 result = subprocess.run(cmd)
 sys.exit(result.returncode)

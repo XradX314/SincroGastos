@@ -1,11 +1,11 @@
 """
-GastApp Sync — Sincronización bidireccional Excel ↔ Supabase
+SincroGastos — Sincronización bidireccional Excel ↔ Supabase
 =============================================================
 100% tkinter: funciona como .exe sin consola ni Python instalado.
 
 Empaquetar:
     pip install -r requirements.txt
-    python build.py          ← genera dist/GastApp-Sync.exe
+    python build.py          ← genera dist/SincroGastos-Sync.exe
 """
 
 from __future__ import annotations
@@ -69,7 +69,7 @@ class Config(TypedDict):
 # Logging (a archivo junto al .exe para poder ver errores)
 # ─────────────────────────────────────────────────────────────
 
-log_path = _app_dir() / "gastapp-sync.log"
+log_path = _app_dir() / "sincrogastos.log"
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -79,7 +79,7 @@ logging.basicConfig(
         logging.StreamHandler(sys.stdout),
     ],
 )
-logger = logging.getLogger("gastapp-sync")
+logger = logging.getLogger("sincrogastos")
 
 CATEGORIA_VALIDAS = {"Casa", "Hijo 1", "Hijo 2", "Hijo 3", "Yo", "Otros"}
 
@@ -159,7 +159,7 @@ class WizardDialog(tk.Toplevel):
 
     def __init__(self, parent: tk.Tk) -> None:
         super().__init__(parent)
-        self.title("GastApp Sync — Primera configuración")
+        self.title("SincroGastos — Primera configuración")
         self.resizable(False, False)
         self.grab_set()
         self.result: Config | None = None
@@ -183,8 +183,8 @@ class WizardDialog(tk.Toplevel):
         fields = [
             ("URL del proyecto Supabase", "https://xxxx.supabase.co", False),
             ("Anon Key de Supabase", "", False),
-            ("Email de tu cuenta GastApp", "", False),
-            ("Contraseña de GastApp", "", True),
+            ("Email de tu cuenta SincroGastos", "", False),
+            ("Contraseña de SincroGastos", "", True),
         ]
         self._entries: list[tk.Entry] = []
         for label, placeholder, secret in fields:
@@ -284,13 +284,27 @@ def _parse_date(cell_value: Any) -> str | None:
         return cell_value.strftime("%Y-%m-%d")
     if hasattr(cell_value, "strftime"):
         return cell_value.strftime("%Y-%m-%d")
+    if isinstance(cell_value, (int, float)):
+        # Número de serie de Excel → fecha
+        try:
+            from openpyxl.utils.datetime import from_excel
+            return from_excel(cell_value).strftime("%Y-%m-%d")
+        except Exception:
+            return None
     if isinstance(cell_value, str):
-        for fmt in ("%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y"):
+        for fmt in ("%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y", "%d/%m/%y"):
             try:
                 return datetime.strptime(cell_value.strip(), fmt).strftime("%Y-%m-%d")
             except ValueError:
                 continue
     return None
+
+
+def _fallback_date(sheet_name: str) -> str:
+    """Usa el 1° del mes de la pestaña como fecha si la celda está vacía."""
+    month = MONTH_TABS.get(sheet_name, 1)
+    year = datetime.now().year
+    return f"{year}-{month:02d}-01"
 
 
 def _detect_col_offset(all_rows: list[tuple[Any, ...]]) -> int:
@@ -300,7 +314,7 @@ def _detect_col_offset(all_rows: list[tuple[Any, ...]]) -> int:
         for col_idx, cell in enumerate(row):
             if cell and str(cell).strip().upper().replace("�", "Í") in keywords:
                 return col_idx
-    return 1  # default: columna B (layout GastApp)
+    return 1  # default: columna B (layout SincroGastos)
 
 
 def _is_total_row(cells: list[Any], col: int) -> bool:
@@ -348,8 +362,8 @@ def read_excel(excel_path: str) -> list[ExpenseRow]:
 
             fecha = _parse_date(fecha_raw)
             if not fecha:
-                logger.warning("Fecha inválida en '%s': %r", sheet_name, fecha_raw)
-                continue
+                fecha = _fallback_date(sheet_name)
+                logger.warning("Fecha vacía en '%s' → usando %s", sheet_name, fecha)
 
             try:
                 importe = float(str(importe_raw).replace(",", ".").replace("$", "").strip())
@@ -397,14 +411,15 @@ def fetch_cloud_expenses(client: Client) -> list[dict[str, Any]]:
     return data
 
 
-def upload_expenses(client: Client, rows: list[ExpenseRow]) -> int:
+def upload_expenses(client: Client, rows: list[ExpenseRow], user_id: str) -> int:
     if not rows:
         return 0
     uploaded = 0
     for i in range(0, len(rows), 100):
         batch = rows[i:i+100]
         result = client.table("expenses").upsert(
-            [dict(r) for r in batch], on_conflict="hash_unico"
+            [{**dict(r), "user_id": user_id} for r in batch],
+            on_conflict="hash_unico",
         ).execute()
         uploaded += len(result.data or [])
     logger.info("Subidos: %d.", uploaded)
@@ -424,10 +439,18 @@ def _tab_name_for_month(month: int) -> str | None:
 
 
 def _find_total_row(ws: Any) -> int:
+    """
+    Busca la fila del sentinel 'x' o de totales buscando en todas las columnas.
+    Los nuevos gastos se insertan ANTES de esa fila.
+    """
     for row_idx in range(1, ws.max_row + 1):
-        val = ws.cell(row=row_idx, column=1).value
-        if val and str(val).strip().upper().startswith("TOTAL"):
-            return row_idx
+        for col_idx in range(1, 10):
+            val = ws.cell(row=row_idx, column=col_idx).value
+            if val is None:
+                continue
+            s = str(val).strip()
+            if s.upper().startswith("TOTAL") or s == "x":
+                return row_idx
     return ws.max_row + 1
 
 
@@ -456,6 +479,10 @@ def write_expenses_to_excel(excel_path: str, rows: list[dict[str, Any]]) -> int:
     for tab_name, tab_rows in by_tab.items():
         ws = wb[tab_name]
         total_idx = _find_total_row(ws)
+        # Detectar columna de inicio (B=2 en este Excel)
+        all_ws_rows = list(ws.iter_rows(values_only=True))
+        col_start = _detect_col_offset(all_ws_rows) + 1  # convertir a 1-indexed
+
         for row_data in tab_rows:
             ws.insert_rows(total_idx)
             vals = [
@@ -465,7 +492,8 @@ def write_expenses_to_excel(excel_path: str, rows: list[dict[str, Any]]) -> int:
                 row_data.get("detalle", ""),
                 row_data.get("importe", 0),
             ]
-            for c, val in enumerate(vals, start=1):
+            for offset, val in enumerate(vals):
+                c = col_start + offset
                 new_cell = ws.cell(row=total_idx, column=c, value=val)
                 src_cell = ws.cell(row=total_idx - 1, column=c)
                 if src_cell.has_style:
@@ -528,10 +556,18 @@ def sync(cfg: Config, client: Client, log_cb: Any = None) -> SyncResult:
 
     log(f"🔍 Solo en nube: {len(only_in_cloud)} | Solo en Excel: {len(only_in_excel)}")
 
+    # Obtener user_id del usuario autenticado (necesario para RLS en el INSERT)
+    try:
+        user_id = client.auth.get_user().user.id
+    except Exception as exc:
+        result.errors.append(f"No se pudo obtener user_id: {exc}")
+        log(f"❌ {exc}")
+        return result
+
     if only_in_excel:
         log(f"⬆️  Subiendo {len(only_in_excel)} gastos...")
         try:
-            result.uploaded = upload_expenses(client, list(only_in_excel))  # type: ignore[arg-type]
+            result.uploaded = upload_expenses(client, list(only_in_excel), user_id)  # type: ignore[arg-type]
         except Exception as exc:
             result.errors.append(str(exc))
             log(f"❌ {exc}")
@@ -557,7 +593,7 @@ class SyncApp(tk.Tk):
         super().__init__()
         self.cfg: Config | None = load_config()
         self.client: Client | None = None
-        self.title("GastApp Sync")
+        self.title("SincroGastos")
         self.resizable(False, False)
         self.geometry("600x520")
         self._setup_ui()
@@ -586,7 +622,7 @@ class SyncApp(tk.Tk):
         pad = {"padx": 16, "pady": 6}
 
         # Cabecera
-        tk.Label(self, text="GastApp Sync", font=("Inter", 17, "bold"),
+        tk.Label(self, text="SincroGastos", font=("Inter", 17, "bold"),
                  fg="#CDD6F4", bg="#1E1E2E").pack(padx=16, pady=(16, 2), anchor="w")
 
         self.status_label = tk.Label(

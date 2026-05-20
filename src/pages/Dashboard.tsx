@@ -51,7 +51,7 @@ export function Dashboard() {
             <div className="w-7 h-7 rounded-lg bg-primary dark:bg-primary-dark flex items-center justify-center">
               <DollarSign size={14} className="text-white" />
             </div>
-            <span className="font-bold text-text1 dark:text-text1-dark">GastApp</span>
+            <span className="font-bold text-text1 dark:text-text1-dark">SincroGastos</span>
           </div>
 
           {/* Acciones */}

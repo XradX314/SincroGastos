@@ -35,7 +35,7 @@ export function Login() {
               <path d="M6 26H26" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-text1 dark:text-text1-dark">GastApp</h1>
+          <h1 className="text-2xl font-bold text-text1 dark:text-text1-dark">SincroGastos</h1>
           <p className="text-sm text-text2 dark:text-text2-dark mt-1">Control de gastos personales</p>
         </div>
 
