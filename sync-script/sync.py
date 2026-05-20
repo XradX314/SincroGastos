@@ -460,19 +460,19 @@ def _tab_name_for_month(month: int) -> str | None:
     return next((n for n, m in MONTH_TABS.items() if m == month), None)
 
 
-def _find_total_row(ws: Any) -> int:
+def _find_total_row(ws: Any, col_start: int) -> int:
     """
-    Busca la fila del sentinel 'x' o de totales buscando en todas las columnas.
+    Busca la fila sentinela ('x' o que empiece con 'Total') SOLO en la columna CATEGORÍA,
+    buscando de abajo hacia arriba para evitar falsos positivos en encabezados/subtotales.
     Los nuevos gastos se insertan ANTES de esa fila.
     """
-    for row_idx in range(1, ws.max_row + 1):
-        for col_idx in range(1, 10):
-            val = ws.cell(row=row_idx, column=col_idx).value
-            if val is None:
-                continue
-            s = str(val).strip()
-            if s.upper().startswith("TOTAL") or s == "x":
-                return row_idx
+    for row_idx in range(ws.max_row, 0, -1):
+        val = ws.cell(row=row_idx, column=col_start).value
+        if val is None:
+            continue
+        s = str(val).strip()
+        if s == "x" or s.upper().startswith("TOTAL"):
+            return row_idx
     return ws.max_row + 1
 
 
@@ -500,10 +500,10 @@ def write_expenses_to_excel(excel_path: str, rows: list[dict[str, Any]]) -> int:
 
     for tab_name, tab_rows in by_tab.items():
         ws = wb[tab_name]
-        total_idx = _find_total_row(ws)
-        # Detectar columna de inicio (B=2 en este Excel)
+        # Detectar columna de inicio primero (necesario para _find_total_row)
         all_ws_rows = list(ws.iter_rows(values_only=True))
         col_start = _detect_col_offset(all_ws_rows) + 1  # convertir a 1-indexed
+        total_idx = _find_total_row(ws, col_start)
 
         for row_data in tab_rows:
             ws.insert_rows(total_idx)
