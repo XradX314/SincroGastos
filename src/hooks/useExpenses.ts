@@ -35,8 +35,11 @@ export function useExpenses() {
   }, [fetchExpenses])
 
   const addExpense = async (input: ExpenseInput): Promise<{ error: string | null }> => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'No autenticado' }
     const hash = await generateHash(input)
     const { error } = await supabase.from('expenses').insert({
+      user_id: user.id,
       categoria: input.categoria,
       subcategoria: input.subcategoria,
       fecha: input.fecha,
