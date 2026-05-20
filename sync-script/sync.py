@@ -1,16 +1,16 @@
 """
 GastApp Sync — Sincronización bidireccional Excel ↔ Supabase
 =============================================================
-Uso:
-    python sync.py              # Lanza la GUI y sincroniza
-    python sync.py --wizard     # Fuerza el wizard de primera configuración
+100% tkinter: funciona como .exe sin consola ni Python instalado.
 
-Empaquetar a .exe:
-    pyinstaller --onefile --windowed --name "GastApp-Sync" --icon=icon.ico sync.py
+Empaquetar:
+    pip install -r requirements.txt
+    python build.py          ← genera dist/GastApp-Sync.exe
 """
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import logging
@@ -18,17 +18,30 @@ import os
 import shutil
 import sys
 import tkinter as tk
+from copy import copy
 from datetime import datetime
 from pathlib import Path
-from tkinter import filedialog, messagebox, scrolledtext, ttk
+from tkinter import filedialog, messagebox, scrolledtext, simpledialog, ttk
 from typing import Any, TypedDict
 
 import openpyxl
 from cryptography.fernet import Fernet
-from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives import hashes as crypto_hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-import base64
-from supabase import create_client, Client
+from supabase import Client, create_client
+
+# ─────────────────────────────────────────────────────────────
+# Ruta del config — junto al .exe en producción, junto al script en dev
+# ─────────────────────────────────────────────────────────────
+
+def _app_dir() -> Path:
+    """Directorio del ejecutable (frozen) o del script (dev)."""
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).parent
+    return Path(__file__).parent
+
+
+CONFIG_FILE = _app_dir() / "config.json"
 
 # ─────────────────────────────────────────────────────────────
 # Tipos
@@ -37,7 +50,7 @@ from supabase import create_client, Client
 class ExpenseRow(TypedDict):
     categoria: str
     subcategoria: str
-    fecha: str          # "YYYY-MM-DD"
+    fecha: str
     detalle: str
     importe: float
     origen: str
@@ -48,25 +61,28 @@ class Config(TypedDict):
     supabase_url: str
     supabase_key: str
     excel_path: str
-    encrypted_token: str    # token de sesión cifrado con Fernet
-    salt: str               # salt hex para PBKDF2
+    encrypted_token: str
+    salt: str
 
 
 # ─────────────────────────────────────────────────────────────
-# Configuración de logging
+# Logging (a archivo junto al .exe para poder ver errores)
 # ─────────────────────────────────────────────────────────────
 
+log_path = _app_dir() / "gastapp-sync.log"
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
+    handlers=[
+        logging.FileHandler(log_path, encoding="utf-8"),
+        logging.StreamHandler(sys.stdout),
+    ],
 )
 logger = logging.getLogger("gastapp-sync")
 
-CONFIG_FILE = Path(__file__).parent / "config.json"
 CATEGORIA_VALIDAS = {"Casa", "Hijo 1", "Hijo 2", "Hijo 3", "Yo", "Otros"}
 
-# Mapeo nombre de pestaña → número de mes
 MONTH_TABS: dict[str, int] = {
     "01 Enero": 1, "02 Febrero": 2, "03 Marzo": 3,
     "04 Abril": 4, "05 Mayo": 5, "06 Junio": 6,
@@ -76,13 +92,12 @@ MONTH_TABS: dict[str, int] = {
 
 
 # ─────────────────────────────────────────────────────────────
-# Utilidades de cifrado
+# Cifrado
 # ─────────────────────────────────────────────────────────────
 
 def _derive_key(password: str, salt: bytes) -> bytes:
-    """Deriva una clave Fernet de 32 bytes a partir de la contraseña usando PBKDF2."""
     kdf = PBKDF2HMAC(
-        algorithm=hashes.SHA256(),
+        algorithm=crypto_hashes.SHA256(),
         length=32,
         salt=salt,
         iterations=390_000,
@@ -91,35 +106,24 @@ def _derive_key(password: str, salt: bytes) -> bytes:
 
 
 def encrypt_token(token: str, password: str) -> tuple[str, str]:
-    """
-    Cifra el token de sesión con Fernet (clave derivada del password).
-    Retorna (token_cifrado_b64, salt_hex).
-    """
     salt = os.urandom(16)
     key = _derive_key(password, salt)
-    fernet = Fernet(key)
-    encrypted = fernet.encrypt(token.encode())
+    encrypted = Fernet(key).encrypt(token.encode())
     return base64.urlsafe_b64encode(encrypted).decode(), salt.hex()
 
 
 def decrypt_token(encrypted_b64: str, salt_hex: str, password: str) -> str:
-    """Descifra el token de sesión."""
     salt = bytes.fromhex(salt_hex)
     key = _derive_key(password, salt)
-    fernet = Fernet(key)
     encrypted = base64.urlsafe_b64decode(encrypted_b64.encode())
-    return fernet.decrypt(encrypted).decode()
+    return Fernet(key).decrypt(encrypted).decode()
 
 
 # ─────────────────────────────────────────────────────────────
-# Hash (mismo algoritmo que el frontend — SHA-256 sobre campos concatenados)
+# Hash (mismo algoritmo que el frontend)
 # ─────────────────────────────────────────────────────────────
 
 def generate_hash(row: ExpenseRow) -> str:
-    """
-    Genera el mismo hash que el frontend:
-    SHA-256(categoria|subcategoria|fecha|detalle|importe)
-    """
     raw = "|".join([
         row["categoria"],
         row["subcategoria"],
@@ -131,11 +135,10 @@ def generate_hash(row: ExpenseRow) -> str:
 
 
 # ─────────────────────────────────────────────────────────────
-# Config: lectura y wizard de primera configuración
+# Config
 # ─────────────────────────────────────────────────────────────
 
 def load_config() -> Config | None:
-    """Lee config.json. Retorna None si no existe."""
     if not CONFIG_FILE.exists():
         return None
     with open(CONFIG_FILE, encoding="utf-8") as f:
@@ -147,53 +150,127 @@ def save_config(cfg: Config) -> None:
         json.dump(cfg, f, indent=2, ensure_ascii=False)
 
 
-def run_wizard() -> Config:
-    """
-    Wizard de primera configuración en consola.
-    Solicita URL de Supabase, anon key, email, password y ruta del Excel.
-    Guarda el token cifrado en config.json (NUNCA la contraseña).
-    """
-    print("\n=== GastApp Sync — Primera configuración ===\n")
-    supabase_url = input("URL de Supabase (ej: https://xxxx.supabase.co): ").strip()
-    supabase_key = input("Anon Key de Supabase: ").strip()
-    email = input("Email de tu cuenta GastApp: ").strip()
-    password = input("Contraseña (no se guardará en texto plano): ")
+# ─────────────────────────────────────────────────────────────
+# Wizard tkinter (sin consola — funciona en .exe windowed)
+# ─────────────────────────────────────────────────────────────
 
-    # Elegir Excel con diálogo de archivo
-    root = tk.Tk()
-    root.withdraw()
-    excel_path = filedialog.askopenfilename(
-        title="Seleccioná el archivo gastos.xlsx",
-        filetypes=[("Excel files", "*.xlsx *.xlsm")],
-    )
-    root.destroy()
+class WizardDialog(tk.Toplevel):
+    """Diálogo de primera configuración completamente en tkinter."""
 
-    if not excel_path:
-        print("❌ No se seleccionó ningún archivo Excel. Saliendo.")
-        sys.exit(1)
+    def __init__(self, parent: tk.Tk) -> None:
+        super().__init__(parent)
+        self.title("GastApp Sync — Primera configuración")
+        self.resizable(False, False)
+        self.grab_set()
+        self.result: Config | None = None
+        self._build_ui()
+        self.protocol("WM_DELETE_WINDOW", self._on_cancel)
 
-    # Autenticar y cifrar token
-    print("\n🔐 Autenticando con Supabase...")
-    client: Client = create_client(supabase_url, supabase_key)
-    response = client.auth.sign_in_with_password({"email": email, "password": password})
+    def _build_ui(self) -> None:
+        BG = "#1E1E2E"
+        FG = "#CDD6F4"
+        ENTRY_BG = "#313244"
+        self.configure(bg=BG)
 
-    if not response.session:
-        print("❌ No se pudo autenticar. Verificá tus credenciales.")
-        sys.exit(1)
+        tk.Label(self, text="Configuración inicial", font=("Inter", 14, "bold"),
+                 bg=BG, fg=FG).pack(pady=(16, 4))
+        tk.Label(self, text="Completá estos datos una sola vez.", font=("Inter", 9),
+                 bg=BG, fg="#89B4FA").pack(pady=(0, 12))
 
-    access_token = response.session.access_token
-    encrypted_token, salt = encrypt_token(access_token, password)
+        form = tk.Frame(self, bg=BG)
+        form.pack(padx=24, fill="x")
 
-    cfg: Config = {
-        "supabase_url": supabase_url,
-        "supabase_key": supabase_key,
-        "excel_path": excel_path,
-        "encrypted_token": encrypted_token,
-        "salt": salt,
-    }
-    save_config(cfg)
-    print(f"✅ Configuración guardada en {CONFIG_FILE}")
-    return cfg
+        fields = [
+            ("URL del proyecto Supabase", "https://xxxx.supabase.co", False),
+            ("Anon Key de Supabase", "", False),
+            ("Email de tu cuenta GastApp", "", False),
+            ("Contraseña de GastApp", "", True),
+        ]
+        self._entries: list[tk.Entry] = []
+        for label, placeholder, secret in fields:
+            tk.Label(form, text=label, font=("Inter", 9), bg=BG, fg=FG,
+                     anchor="w").pack(fill="x", pady=(6, 1))
+            e = tk.Entry(form, font=("Inter", 10), bg=ENTRY_BG, fg=FG,
+                         insertbackground=FG, relief="flat",
+                         show="•" if secret else "")
+            if placeholder:
+                e.insert(0, placeholder)
+                e.bind("<FocusIn>", lambda ev, p=placeholder, en=e: (
+                    en.delete(0, "end") if en.get() == p else None
+                ))
+            e.pack(fill="x", ipady=6)
+            self._entries.append(e)
+
+        # Selector de Excel
+        tk.Label(form, text="Archivo gastos.xlsx", font=("Inter", 9),
+                 bg=BG, fg=FG, anchor="w").pack(fill="x", pady=(10, 1))
+        excel_row = tk.Frame(form, bg=BG)
+        excel_row.pack(fill="x")
+        self._excel_var = tk.StringVar()
+        tk.Entry(excel_row, textvariable=self._excel_var, font=("Inter", 9),
+                 bg=ENTRY_BG, fg=FG, insertbackground=FG, relief="flat",
+                 state="readonly").pack(side="left", fill="x", expand=True, ipady=6)
+        tk.Button(excel_row, text="Buscar…", command=self._pick_excel,
+                  bg="#4F6AF5", fg="white", relief="flat", padx=8,
+                  cursor="hand2").pack(side="left", padx=(6, 0))
+
+        # Botones
+        btn_row = tk.Frame(self, bg=BG)
+        btn_row.pack(pady=16, padx=24, fill="x")
+        tk.Button(btn_row, text="Cancelar", command=self._on_cancel,
+                  bg="#313244", fg=FG, relief="flat", padx=12, pady=6,
+                  cursor="hand2").pack(side="right", padx=(6, 0))
+        tk.Button(btn_row, text="Guardar y conectar", command=self._on_save,
+                  bg="#4F6AF5", fg="white", font=("Inter", 10, "bold"),
+                  relief="flat", padx=12, pady=6, cursor="hand2").pack(side="right")
+
+    def _pick_excel(self) -> None:
+        path = filedialog.askopenfilename(
+            title="Seleccioná el archivo gastos.xlsx",
+            filetypes=[("Excel", "*.xlsx *.xlsm")],
+        )
+        if path:
+            self._excel_var.set(path)
+
+    def _on_save(self) -> None:
+        url, key, email, password = (e.get().strip() for e in self._entries)
+        excel = self._excel_var.get().strip()
+
+        if not all([url, key, email, password, excel]):
+            messagebox.showwarning("Faltan datos", "Completá todos los campos.", parent=self)
+            return
+
+        # Autenticar para obtener token
+        try:
+            client: Client = create_client(url, key)
+            response = client.auth.sign_in_with_password({"email": email, "password": password})
+            if not response.session:
+                raise ValueError("Sin sesión")
+        except Exception as exc:
+            messagebox.showerror("Error de autenticación",
+                                 f"No se pudo conectar con Supabase:\n{exc}", parent=self)
+            return
+
+        enc_token, salt = encrypt_token(response.session.access_token, password)
+        self.result = Config(
+            supabase_url=url,
+            supabase_key=key,
+            excel_path=excel,
+            encrypted_token=enc_token,
+            salt=salt,
+        )
+        save_config(self.result)
+        self.destroy()
+
+    def _on_cancel(self) -> None:
+        self.result = None
+        self.destroy()
+
+
+def run_wizard(parent: tk.Tk) -> Config | None:
+    dlg = WizardDialog(parent)
+    parent.wait_window(dlg)
+    return dlg.result
 
 
 # ─────────────────────────────────────────────────────────────
@@ -201,15 +278,11 @@ def run_wizard() -> Config:
 # ─────────────────────────────────────────────────────────────
 
 def _parse_date(cell_value: Any) -> str | None:
-    """
-    Convierte el valor de celda de fecha en string "YYYY-MM-DD".
-    Acepta objetos datetime, date, y strings en formato DD/MM/YYYY.
-    """
     if cell_value is None:
         return None
     if isinstance(cell_value, datetime):
         return cell_value.strftime("%Y-%m-%d")
-    if hasattr(cell_value, "strftime"):       # date
+    if hasattr(cell_value, "strftime"):
         return cell_value.strftime("%Y-%m-%d")
     if isinstance(cell_value, str):
         for fmt in ("%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y"):
@@ -220,65 +293,40 @@ def _parse_date(cell_value: Any) -> str | None:
     return None
 
 
-def _is_total_row(cells: list[Any], col_offset: int) -> bool:
-    """
-    Heurística para detectar filas de totales/resumen.
-    col_offset: índice de la columna CATEGORÍA (0 para col A, 1 para col B).
-    """
-    cat = cells[col_offset] if len(cells) > col_offset else None
-    if cat is None:
-        return True
-    cat_str = str(cat).strip()
-    return cat_str == "" or cat_str.upper().startswith("TOTAL") or cat_str == "x"
-
-
 def _detect_col_offset(all_rows: list[tuple[Any, ...]]) -> int:
-    """
-    Detecta en qué columna empieza CATEGORÍA buscando la fila de encabezado.
-    Retorna el índice de columna (0=A, 1=B).
-    En el Excel de GastApp los datos están en columnas B-F (offset=1).
-    """
+    """Detecta en qué columna empieza CATEGORÍA (0=A, 1=B, etc.)."""
     keywords = {"CATEGORÍA", "CATEGORIA", "CATEGORY"}
     for row in all_rows:
         for col_idx, cell in enumerate(row):
             if cell and str(cell).strip().upper().replace("�", "Í") in keywords:
                 return col_idx
-    return 1  # default: columna B
+    return 1  # default: columna B (layout GastApp)
+
+
+def _is_total_row(cells: list[Any], col: int) -> bool:
+    cat = cells[col] if len(cells) > col else None
+    if cat is None:
+        return True
+    s = str(cat).strip()
+    return s == "" or s.upper().startswith("TOTAL") or s == "x"
 
 
 def read_excel(excel_path: str) -> list[ExpenseRow]:
-    """
-    Lee todas las pestañas mensuales del Excel en modo read-only.
-    Retorna una lista de ExpenseRow con hash_unico ya calculado.
-
-    Estructura del Excel de GastApp (columnas B-F):
-        Columna B (idx 1): CATEGORÍA
-        Columna C (idx 2): SUBCATEGORÍA
-        Columna D (idx 3): FECHA
-        Columna E (idx 4): DETALLE
-        Columna F (idx 5): IMPORTE
-
-    La función detecta automáticamente el offset de columna leyendo
-    la fila de encabezado, por lo que funciona aunque cambie el layout.
-    """
     wb = openpyxl.load_workbook(excel_path, read_only=True, data_only=True)
     rows: list[ExpenseRow] = []
 
-    for sheet_name, month_num in MONTH_TABS.items():
+    for sheet_name in MONTH_TABS:
         if sheet_name not in wb.sheetnames:
-            logger.debug("Pestaña '%s' no encontrada, omitiendo.", sheet_name)
             continue
-
         ws = wb[sheet_name]
         all_rows = list(ws.iter_rows(values_only=True))
         if not all_rows:
             continue
 
-        # Detectar offset de columna y fila de encabezado
         col = _detect_col_offset(all_rows)
         header_idx = 0
         for i, row in enumerate(all_rows):
-            if len(row) > col and row[col] and str(row[col]).strip().upper().replace("�", "Í") in ("CATEGORÍA", "CATEGORIA", "CATEGORY"):
+            if len(row) > col and row[col] and "CATEGOR" in str(row[col]).upper():
                 header_idx = i + 1
                 break
 
@@ -289,27 +337,24 @@ def read_excel(excel_path: str) -> list[ExpenseRow]:
             if _is_total_row(cells, col):
                 continue
 
-            categoria    = str(cells[col]).strip()     if cells[col]     else ""
-            subcategoria = str(cells[col+1]).strip()   if cells[col+1]   else ""
+            categoria    = str(cells[col]).strip()   if cells[col]   else ""
+            subcategoria = str(cells[col+1]).strip() if cells[col+1] else ""
             fecha_raw    = cells[col+2]
-            detalle      = str(cells[col+3]).strip()   if cells[col+3]   else ""
+            detalle      = str(cells[col+3]).strip() if cells[col+3] else ""
             importe_raw  = cells[col+4]
 
-            # Validaciones mínimas
-            if categoria not in CATEGORIA_VALIDAS:
-                continue
-            if not subcategoria:
+            if categoria not in CATEGORIA_VALIDAS or not subcategoria:
                 continue
 
             fecha = _parse_date(fecha_raw)
             if not fecha:
-                logger.warning("Fecha inválida en pestaña '%s': %r — fila omitida.", sheet_name, fecha_raw)
+                logger.warning("Fecha inválida en '%s': %r", sheet_name, fecha_raw)
                 continue
 
             try:
                 importe = float(str(importe_raw).replace(",", ".").replace("$", "").strip())
             except (ValueError, TypeError):
-                logger.warning("Importe inválido: %r — fila omitida.", importe_raw)
+                logger.warning("Importe inválido: %r", importe_raw)
                 continue
 
             expense: ExpenseRow = {
@@ -319,75 +364,50 @@ def read_excel(excel_path: str) -> list[ExpenseRow]:
                 "detalle": detalle,
                 "importe": importe,
                 "origen": "excel",
-                "hash_unico": "",   # se completa abajo
+                "hash_unico": "",
             }
             expense["hash_unico"] = generate_hash(expense)
             rows.append(expense)
 
     wb.close()
-    logger.info("Excel leído: %d filas de datos encontradas.", len(rows))
+    logger.info("Excel leído: %d filas.", len(rows))
     return rows
 
 
 # ─────────────────────────────────────────────────────────────
-# Supabase: autenticación y CRUD
+# Supabase
 # ─────────────────────────────────────────────────────────────
 
 def get_supabase_client(cfg: Config, password: str) -> Client:
-    """
-    Crea el cliente Supabase y establece la sesión usando el token cifrado.
-    Si el token expiró, reautentica con email/password y actualiza config.json.
-    """
     client: Client = create_client(cfg["supabase_url"], cfg["supabase_key"])
-
     try:
         token = decrypt_token(cfg["encrypted_token"], cfg["salt"], password)
-        client.auth.set_session(token, token)   # access_token, refresh_token
-        logger.info("Sesión restaurada desde token cifrado.")
+        client.auth.set_session(token, token)
+        logger.info("Sesión restaurada.")
     except Exception as exc:
-        logger.warning("Token expirado o inválido (%s). Reautenticando...", exc)
-        email = input("Email (para reautenticar): ").strip()
-        response = client.auth.sign_in_with_password({"email": email, "password": password})
-        if not response.session:
-            raise RuntimeError("No se pudo reautenticar con Supabase.") from exc
-        new_token = response.session.access_token
-        enc, salt = encrypt_token(new_token, password)
-        cfg["encrypted_token"] = enc
-        cfg["salt"] = salt
-        save_config(cfg)
-        logger.info("Token renovado y guardado.")
-
+        logger.warning("Token expirado (%s). Reautenticando...", exc)
+        raise RuntimeError("Token expirado. Usá el botón 'Reconfigurar'.") from exc
     return client
 
 
 def fetch_cloud_expenses(client: Client) -> list[dict[str, Any]]:
-    """Descarga todos los gastos del usuario desde Supabase (RLS filtra automáticamente)."""
     result = client.table("expenses").select("*").execute()
     data: list[dict[str, Any]] = result.data or []
-    logger.info("Nube: %d gastos descargados.", len(data))
+    logger.info("Nube: %d gastos.", len(data))
     return data
 
 
 def upload_expenses(client: Client, rows: list[ExpenseRow]) -> int:
-    """
-    Sube filas al servidor en lotes de 100.
-    Usa upsert con on_conflict=hash_unico para idempotencia.
-    Retorna la cantidad de filas subidas exitosamente.
-    """
     if not rows:
         return 0
-
     uploaded = 0
-    batch_size = 100
-    for i in range(0, len(rows), batch_size):
-        batch = rows[i : i + batch_size]
+    for i in range(0, len(rows), 100):
+        batch = rows[i:i+100]
         result = client.table("expenses").upsert(
-            [dict(r) for r in batch],
-            on_conflict="hash_unico",
+            [dict(r) for r in batch], on_conflict="hash_unico"
         ).execute()
         uploaded += len(result.data or [])
-
-    logger.info("Subidos a la nube: %d gastos.", uploaded)
+    logger.info("Subidos: %d.", uploaded)
     return uploaded
 
 
@@ -396,118 +416,66 @@ def upload_expenses(client: Client, rows: list[ExpenseRow]) -> int:
 # ─────────────────────────────────────────────────────────────
 
 def _month_from_date(date_str: str) -> int:
-    """Extrae el mes (1-12) de un string "YYYY-MM-DD"."""
     return int(date_str[5:7])
 
 
 def _tab_name_for_month(month: int) -> str | None:
-    """Retorna el nombre de la pestaña para el mes dado."""
-    for name, m in MONTH_TABS.items():
-        if m == month:
-            return name
-    return None
+    return next((n for n, m in MONTH_TABS.items() if m == month), None)
 
 
-def _find_total_row(ws: openpyxl.worksheet.worksheet.Worksheet) -> int:
-    """
-    Busca la última fila de datos y retorna el índice (1-based) de la fila
-    de totales (la primera fila en blanco en columna A después de los datos,
-    o la fila con 'TOTAL' en columna A).
-    Retorna ws.max_row + 1 si no se encuentra.
-    """
+def _find_total_row(ws: Any) -> int:
     for row_idx in range(1, ws.max_row + 1):
         val = ws.cell(row=row_idx, column=1).value
-        if val is None:
-            continue
-        if str(val).strip().upper().startswith("TOTAL"):
+        if val and str(val).strip().upper().startswith("TOTAL"):
             return row_idx
     return ws.max_row + 1
 
 
 def backup_excel(excel_path: str) -> str:
-    """
-    Crea una copia de seguridad del Excel con sufijo de timestamp.
-    Retorna la ruta del backup.
-    """
     src = Path(excel_path)
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    dst = src.parent / f"{src.stem}_backup_{ts}{src.suffix}"
+    dst = src.parent / f"{src.stem}_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}{src.suffix}"
     shutil.copy2(src, dst)
-    logger.info("Backup creado: %s", dst)
+    logger.info("Backup: %s", dst)
     return str(dst)
 
 
 def write_expenses_to_excel(excel_path: str, rows: list[dict[str, Any]]) -> int:
-    """
-    Inserta filas de gastos en las pestañas mensuales correctas del Excel.
-
-    Proceso:
-      1. Primero hace backup del archivo original.
-      2. Abre en modo escritura.
-      3. Para cada gasto, detecta la pestaña por el mes de 'fecha'.
-      4. Inserta ANTES de la fila de totales, copiando el estilo de la fila anterior.
-      5. Guarda el archivo.
-
-    Retorna la cantidad de filas escritas.
-    """
     if not rows:
         return 0
-
     backup_excel(excel_path)
-
     wb = openpyxl.load_workbook(excel_path)
     written = 0
 
-    # Agrupar por pestaña
     by_tab: dict[str, list[dict[str, Any]]] = {}
     for row in rows:
         month = _month_from_date(row["fecha"])
         tab = _tab_name_for_month(month)
-        if not tab:
-            logger.warning("No se encontró pestaña para el mes %d, fila omitida.", month)
-            continue
-        if tab not in wb.sheetnames:
-            logger.warning("Pestaña '%s' no existe en el Excel, fila omitida.", tab)
-            continue
-        by_tab.setdefault(tab, []).append(row)
+        if tab and tab in wb.sheetnames:
+            by_tab.setdefault(tab, []).append(row)
 
     for tab_name, tab_rows in by_tab.items():
         ws = wb[tab_name]
-        total_row_idx = _find_total_row(ws)
-
+        total_idx = _find_total_row(ws)
         for row_data in tab_rows:
-            # Insertar una fila antes de la fila de totales
-            ws.insert_rows(total_row_idx)
-
-            # Determinar estilo a copiar (fila anterior a la de totales)
-            source_row = total_row_idx - 1
-
-            values = [
+            ws.insert_rows(total_idx)
+            vals = [
                 row_data.get("categoria", ""),
                 row_data.get("subcategoria", ""),
                 row_data.get("fecha", ""),
                 row_data.get("detalle", ""),
                 row_data.get("importe", 0),
             ]
-
-            for col, val in enumerate(values, start=1):
-                new_cell = ws.cell(row=total_row_idx, column=col, value=val)
-                # Copiar estilo de la fila de referencia
-                src_cell = ws.cell(row=source_row, column=col)
+            for c, val in enumerate(vals, start=1):
+                new_cell = ws.cell(row=total_idx, column=c, value=val)
+                src_cell = ws.cell(row=total_idx - 1, column=c)
                 if src_cell.has_style:
-                    from copy import copy
                     new_cell.font = copy(src_cell.font)
                     new_cell.border = copy(src_cell.border)
                     new_cell.fill = copy(src_cell.fill)
                     new_cell.number_format = src_cell.number_format
                     new_cell.alignment = copy(src_cell.alignment)
-
-            total_row_idx += 1    # La fila de totales se desplazó una posición
+            total_idx += 1
             written += 1
-            logger.info("Insertado en '%s' fila %d: %s / %s / %s",
-                        tab_name, total_row_idx - 1,
-                        row_data.get("categoria"), row_data.get("subcategoria"),
-                        row_data.get("fecha"))
 
     wb.save(excel_path)
     wb.close()
@@ -516,177 +484,189 @@ def write_expenses_to_excel(excel_path: str, rows: list[dict[str, Any]]) -> int:
 
 
 # ─────────────────────────────────────────────────────────────
-# Algoritmo de merge bidireccional
+# Algoritmo de merge
 # ─────────────────────────────────────────────────────────────
 
 class SyncResult:
     def __init__(self) -> None:
-        self.uploaded: int = 0
-        self.downloaded: int = 0
-        self.conflicts: int = 0
+        self.uploaded = 0
+        self.downloaded = 0
+        self.conflicts = 0
         self.errors: list[str] = []
 
 
-def sync(
-    cfg: Config,
-    client: Client,
-    log_callback: "Callable[[str], None] | None" = None,
-) -> SyncResult:
-    """
-    Sincronización bidireccional:
-      - Solo en nube  → descargar al Excel
-      - Solo en Excel → subir a la nube
-      - En ambos      → ignorar (ya sincronizado)
-    """
+def sync(cfg: Config, client: Client, log_cb: Any = None) -> SyncResult:
     result = SyncResult()
 
     def log(msg: str) -> None:
         logger.info(msg)
-        if log_callback:
-            log_callback(msg)
+        if log_cb:
+            log_cb(msg)
 
-    # 1. Leer Excel
     log("📖 Leyendo Excel...")
     try:
         excel_rows = read_excel(cfg["excel_path"])
     except Exception as exc:
-        result.errors.append(f"Error leyendo Excel: {exc}")
-        log(f"❌ Error leyendo Excel: {exc}")
+        result.errors.append(str(exc))
+        log(f"❌ {exc}")
         return result
 
-    set_excel: dict[str, ExpenseRow] = {r["hash_unico"]: r for r in excel_rows}
+    set_excel = {r["hash_unico"]: r for r in excel_rows}
 
-    # 2. Leer nube
     log("☁️  Consultando Supabase...")
     try:
         cloud_rows = fetch_cloud_expenses(client)
     except Exception as exc:
-        result.errors.append(f"Error consultando Supabase: {exc}")
-        log(f"❌ Error consultando Supabase: {exc}")
+        result.errors.append(str(exc))
+        log(f"❌ {exc}")
         return result
 
-    set_cloud: dict[str, dict[str, Any]] = {r["hash_unico"]: r for r in cloud_rows}
+    set_cloud = {r["hash_unico"]: r for r in cloud_rows}
 
-    # 3. Calcular diferencias
     only_in_cloud = [r for h, r in set_cloud.items() if h not in set_excel]
-    only_in_excel = [r for h, r in set_excel.items() if h not in set_cloud]
+    only_in_excel = [r for h, r in set_excel.items() if h not in set_cloud]  # type: ignore[misc]
 
-    log(f"🔍 Solo en nube: {len(only_in_cloud)} | Solo en Excel: {len(only_in_excel)} | En ambos: {len(set_excel) & len(set_cloud)}")
+    log(f"🔍 Solo en nube: {len(only_in_cloud)} | Solo en Excel: {len(only_in_excel)}")
 
-    # 4. Subir los que solo están en Excel
     if only_in_excel:
-        log(f"⬆️  Subiendo {len(only_in_excel)} gastos a la nube...")
+        log(f"⬆️  Subiendo {len(only_in_excel)} gastos...")
         try:
             result.uploaded = upload_expenses(client, list(only_in_excel))  # type: ignore[arg-type]
         except Exception as exc:
-            result.errors.append(f"Error subiendo a Supabase: {exc}")
-            log(f"❌ Error subiendo: {exc}")
+            result.errors.append(str(exc))
+            log(f"❌ {exc}")
 
-    # 5. Escribir al Excel los que solo están en la nube
     if only_in_cloud:
-        log(f"⬇️  Escribiendo {len(only_in_cloud)} gastos en el Excel...")
+        log(f"⬇️  Descargando {len(only_in_cloud)} gastos al Excel...")
         try:
             result.downloaded = write_expenses_to_excel(cfg["excel_path"], only_in_cloud)
         except Exception as exc:
-            result.errors.append(f"Error escribiendo en Excel: {exc}")
-            log(f"❌ Error escribiendo en Excel: {exc}")
+            result.errors.append(str(exc))
+            log(f"❌ {exc}")
 
     log("✅ Sincronización completada.")
     return result
 
 
 # ─────────────────────────────────────────────────────────────
-# GUI Tkinter
+# GUI principal
 # ─────────────────────────────────────────────────────────────
 
 class SyncApp(tk.Tk):
-    def __init__(self, cfg: Config) -> None:
+    def __init__(self) -> None:
         super().__init__()
-        self.cfg = cfg
+        self.cfg: Config | None = load_config()
         self.client: Client | None = None
-        self.sync_result: SyncResult | None = None
-
         self.title("GastApp Sync")
         self.resizable(False, False)
-        self.geometry("580x480")
+        self.geometry("600x520")
         self._setup_ui()
         self._apply_theme()
 
+        # Si no hay config, abrir wizard al arrancar
+        if not self.cfg:
+            self.after(200, self._open_wizard)
+        else:
+            self._refresh_status()
+
+    # ── Tema ─────────────────────────────────────────────────
+
     def _apply_theme(self) -> None:
-        bg = "#1E1E2E"
-        fg = "#CDD6F4"
-        self.configure(bg=bg)
+        self.BG    = "#1E1E2E"
+        self.FG    = "#CDD6F4"
+        self.BLUE  = "#4F6AF5"
+        self.configure(bg=self.BG)
         style = ttk.Style(self)
         style.theme_use("clam")
-        style.configure("TButton", background="#4F6AF5", foreground="white",
-                        font=("Inter", 10, "bold"), padding=8)
-        style.configure("TProgressbar", troughcolor=bg, background="#4F6AF5")
-        style.configure("TLabel", background=bg, foreground=fg)
-        style.configure("TFrame", background=bg)
+        style.configure("TProgressbar", troughcolor=self.BG, background=self.BLUE)
+
+    # ── UI ───────────────────────────────────────────────────
 
     def _setup_ui(self) -> None:
-        pad = {"padx": 16, "pady": 8}
+        pad = {"padx": 16, "pady": 6}
 
         # Cabecera
-        header = tk.Label(
-            self, text="GastApp — Sincronización",
-            font=("Inter", 16, "bold"), fg="#CDD6F4", bg="#1E1E2E"
-        )
-        header.pack(**pad, anchor="w")
+        tk.Label(self, text="GastApp Sync", font=("Inter", 17, "bold"),
+                 fg="#CDD6F4", bg="#1E1E2E").pack(padx=16, pady=(16, 2), anchor="w")
 
-        excel_label = tk.Label(
-            self,
-            text=f"📄 Excel: {Path(self.cfg['excel_path']).name}",
-            font=("Inter", 9), fg="#89B4FA", bg="#1E1E2E"
+        self.status_label = tk.Label(
+            self, text="Sin configuración", font=("Inter", 9),
+            fg="#89B4FA", bg="#1E1E2E", anchor="w",
         )
-        excel_label.pack(anchor="w", padx=16)
+        self.status_label.pack(padx=16, anchor="w")
 
-        # Campo de contraseña
+        ttk.Separator(self).pack(fill="x", pady=8)
+
+        # Contraseña
         pw_frame = tk.Frame(self, bg="#1E1E2E")
         pw_frame.pack(fill="x", **pad)
         tk.Label(pw_frame, text="Contraseña:", font=("Inter", 10),
                  fg="#CDD6F4", bg="#1E1E2E").pack(side="left")
         self.pw_var = tk.StringVar()
-        pw_entry = tk.Entry(pw_frame, textvariable=self.pw_var, show="•",
-                            width=30, font=("Inter", 10),
-                            bg="#313244", fg="#CDD6F4", insertbackground="#CDD6F4",
-                            relief="flat")
-        pw_entry.pack(side="left", padx=8)
-        pw_entry.focus_set()
+        tk.Entry(pw_frame, textvariable=self.pw_var, show="•", width=28,
+                 font=("Inter", 10), bg="#313244", fg="#CDD6F4",
+                 insertbackground="#CDD6F4", relief="flat").pack(side="left", padx=8, ipady=4)
 
-        # Botón sincronizar
+        # Botones de acción
+        btn_frame = tk.Frame(self, bg="#1E1E2E")
+        btn_frame.pack(fill="x", padx=16, pady=4)
+
         self.btn_sync = tk.Button(
-            self, text="▶  Sincronizar", command=self._start_sync,
+            btn_frame, text="▶  Sincronizar", command=self._start_sync,
             font=("Inter", 11, "bold"), bg="#4F6AF5", fg="white",
-            activebackground="#3D57E0", activeforeground="white",
-            relief="flat", padx=16, pady=8, cursor="hand2"
+            activebackground="#3D57E0", relief="flat",
+            padx=16, pady=8, cursor="hand2",
         )
-        self.btn_sync.pack(**pad)
+        self.btn_sync.pack(side="left")
+
+        tk.Button(
+            btn_frame, text="⚙  Reconfigurar", command=self._open_wizard,
+            font=("Inter", 9), bg="#313244", fg="#CDD6F4",
+            activebackground="#45475A", relief="flat",
+            padx=10, pady=8, cursor="hand2",
+        ).pack(side="left", padx=(8, 0))
 
         # Barra de progreso
-        self.progress = ttk.Progressbar(self, mode="indeterminate", length=540)
-        self.progress.pack(**pad)
+        self.progress = ttk.Progressbar(self, mode="indeterminate", length=568)
+        self.progress.pack(padx=16, pady=6)
 
-        # Log scrolleable
-        log_frame = tk.Frame(self, bg="#1E1E2E")
-        log_frame.pack(fill="both", expand=True, padx=16, pady=(0, 8))
+        # Log
         self.log_text = scrolledtext.ScrolledText(
-            log_frame, height=12, font=("Cascadia Code", 9),
+            self, height=14, font=("Cascadia Code", 9),
             bg="#181825", fg="#A6E3A1", insertbackground="#CDD6F4",
-            relief="flat", wrap="word", state="disabled"
+            relief="flat", wrap="word", state="disabled",
         )
-        self.log_text.pack(fill="both", expand=True)
+        self.log_text.pack(fill="both", expand=True, padx=16, pady=(0, 8))
 
-        # Botón "Abrir Excel" (inicialmente oculto)
+        # Botón abrir Excel (oculto hasta sincronizar)
         self.btn_open = tk.Button(
             self, text="📂  Abrir Excel", command=self._open_excel,
             font=("Inter", 10, "bold"), bg="#313244", fg="#CDD6F4",
-            activebackground="#45475A", relief="flat", padx=12, pady=6,
-            cursor="hand2"
+            activebackground="#45475A", relief="flat",
+            padx=12, pady=6, cursor="hand2",
         )
 
+    def _refresh_status(self) -> None:
+        if self.cfg:
+            excel_name = Path(self.cfg["excel_path"]).name
+            self.status_label.config(
+                text=f"📄 {excel_name}  ·  🔗 {self.cfg['supabase_url']}"
+            )
+        else:
+            self.status_label.config(text="Sin configuración — usá ⚙ Reconfigurar")
+
+    # ── Wizard ───────────────────────────────────────────────
+
+    def _open_wizard(self) -> None:
+        cfg = run_wizard(self)
+        if cfg:
+            self.cfg = cfg
+            self._refresh_status()
+            self._log("✅ Configuración guardada.")
+
+    # ── Sincronización ───────────────────────────────────────
+
     def _log(self, msg: str) -> None:
-        """Agrega una línea al log con timestamp."""
         self.log_text.configure(state="normal")
         ts = datetime.now().strftime("%H:%M:%S")
         self.log_text.insert("end", f"[{ts}] {msg}\n")
@@ -694,11 +674,13 @@ class SyncApp(tk.Tk):
         self.log_text.configure(state="disabled")
 
     def _start_sync(self) -> None:
+        if not self.cfg:
+            messagebox.showwarning("Sin configuración", "Usá ⚙ Reconfigurar primero.")
+            return
         password = self.pw_var.get()
         if not password:
-            messagebox.showwarning("Contraseña", "Ingresá tu contraseña para continuar.")
+            messagebox.showwarning("Contraseña", "Ingresá tu contraseña.")
             return
-
         self.btn_sync.configure(state="disabled")
         self.progress.start(10)
         self._log("🔐 Autenticando...")
@@ -706,19 +688,18 @@ class SyncApp(tk.Tk):
 
     def _do_sync(self, password: str) -> None:
         try:
-            self.client = get_supabase_client(self.cfg, password)
+            self.client = get_supabase_client(self.cfg, password)  # type: ignore[arg-type]
             self._log("✅ Autenticación exitosa.")
         except Exception as exc:
-            self._log(f"❌ Error de autenticación: {exc}")
+            self._log(f"❌ {exc}")
             self.progress.stop()
             self.btn_sync.configure(state="normal")
-            messagebox.showerror("Error", f"No se pudo autenticar:\n{exc}")
+            messagebox.showerror("Error de autenticación", str(exc))
             return
 
-        self._log("🔄 Iniciando sincronización bidireccional...")
+        self._log("🔄 Sincronizando...")
         try:
-            result = sync(self.cfg, self.client, log_callback=self._log)
-            self.sync_result = result
+            result = sync(self.cfg, self.client, log_cb=self._log)  # type: ignore[arg-type]
         except Exception as exc:
             self._log(f"❌ Error inesperado: {exc}")
             self.progress.stop()
@@ -728,27 +709,18 @@ class SyncApp(tk.Tk):
         self.progress.stop()
         self.btn_sync.configure(state="normal")
 
-        # Resumen final
-        self._log("─" * 50)
+        self._log("─" * 48)
         self._log(f"✅ {result.uploaded} gastos subidos a la nube")
         self._log(f"✅ {result.downloaded} gastos descargados al Excel")
-        self._log(f"⚠️  {result.conflicts} conflictos ignorados")
         if result.errors:
-            for err in result.errors:
-                self._log(f"❌ {err}")
+            for e in result.errors:
+                self._log(f"❌ {e}")
 
-        # Mostrar botón "Abrir Excel"
-        self.btn_open.pack(padx=16, pady=(0, 12))
+        self.btn_open.pack(padx=16, pady=(0, 10))
 
     def _open_excel(self) -> None:
-        import subprocess
-        excel_path = self.cfg["excel_path"]
-        if sys.platform == "win32":
-            os.startfile(excel_path)  # type: ignore[attr-defined]
-        elif sys.platform == "darwin":
-            subprocess.run(["open", excel_path], check=False)
-        else:
-            subprocess.run(["xdg-open", excel_path], check=False)
+        if self.cfg:
+            os.startfile(self.cfg["excel_path"])  # type: ignore[attr-defined]
 
 
 # ─────────────────────────────────────────────────────────────
@@ -756,39 +728,9 @@ class SyncApp(tk.Tk):
 # ─────────────────────────────────────────────────────────────
 
 def main() -> None:
-    force_wizard = "--wizard" in sys.argv
-
-    cfg = load_config()
-    if cfg is None or force_wizard:
-        cfg = run_wizard()
-
-    # Verificar que el Excel sigue existiendo
-    if not Path(cfg["excel_path"]).exists():
-        print(f"❌ No se encontró el archivo Excel: {cfg['excel_path']}")
-        print("Ejecutá con --wizard para reconfigurar.")
-        sys.exit(1)
-
-    app = SyncApp(cfg)
+    app = SyncApp()
     app.mainloop()
 
 
 if __name__ == "__main__":
     main()
-
-
-# ─────────────────────────────────────────────────────────────
-# Instrucción de empaquetado con PyInstaller
-# ─────────────────────────────────────────────────────────────
-#
-# Generá el .exe portable con este comando (desde la carpeta sync-script/):
-#
-#   pyinstaller --onefile --windowed --name "GastApp-Sync" --icon=icon.ico sync.py
-#
-# Flags:
-#   --onefile   → un único ejecutable sin carpetas adicionales
-#   --windowed  → no abre ventana de consola (modo GUI puro)
-#   --name      → nombre del ejecutable resultante
-#   --icon      → ícono .ico del ejecutable (opcional, debe existir el archivo)
-#
-# El .exe resultante queda en dist/GastApp-Sync.exe
-# Puede ejecutarse en cualquier PC Windows sin Python instalado.
