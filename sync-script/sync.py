@@ -100,6 +100,20 @@ MONTH_TABS: dict[str, int] = {
 
 
 # ─────────────────────────────────────────────────────────────
+# JWT helpers
+# ─────────────────────────────────────────────────────────────
+
+def _user_id_from_token(token: str) -> str:
+    """Extrae el user_id (sub) del JWT sin hacer ninguna llamada de red."""
+    payload_b64 = token.split('.')[1]
+    padding = 4 - len(payload_b64) % 4
+    if padding != 4:
+        payload_b64 += '=' * padding
+    payload = json.loads(base64.urlsafe_b64decode(payload_b64))
+    return payload['sub']
+
+
+# ─────────────────────────────────────────────────────────────
 # Cifrado
 # ─────────────────────────────────────────────────────────────
 
@@ -531,7 +545,7 @@ class SyncResult:
         self.errors: list[str] = []
 
 
-def sync(cfg: Config, client: Client, log_cb: Any = None) -> SyncResult:
+def sync(cfg: Config, client: Client, user_id: str, log_cb: Any = None) -> SyncResult:
     result = SyncResult()
 
     def log(msg: str) -> None:
@@ -563,14 +577,6 @@ def sync(cfg: Config, client: Client, log_cb: Any = None) -> SyncResult:
     only_in_excel = [r for h, r in set_excel.items() if h not in set_cloud]  # type: ignore[misc]
 
     log(f"🔍 Solo en nube: {len(only_in_cloud)} | Solo en Excel: {len(only_in_excel)}")
-
-    # Obtener user_id del usuario autenticado (necesario para RLS en el INSERT)
-    try:
-        user_id = client.auth.get_user().user.id
-    except Exception as exc:
-        result.errors.append(f"No se pudo obtener user_id: {exc}")
-        log(f"❌ {exc}")
-        return result
 
     if only_in_excel:
         log(f"⬆️  Subiendo {len(only_in_excel)} gastos...")
@@ -745,6 +751,9 @@ class SyncApp(tk.Tk):
     def _do_sync(self, password: str) -> None:
         try:
             self.client = get_supabase_client(self.cfg, password)  # type: ignore[arg-type]
+            # Extraer user_id del JWT sin llamada de red adicional
+            token = decrypt_token(self.cfg["encrypted_token"], self.cfg["salt"], password)  # type: ignore[arg-type]
+            user_id = _user_id_from_token(token)
             self._log("✅ Autenticación exitosa.")
         except Exception as exc:
             self._log(f"❌ {exc}")
@@ -755,7 +764,7 @@ class SyncApp(tk.Tk):
 
         self._log("🔄 Sincronizando...")
         try:
-            result = sync(self.cfg, self.client, log_cb=self._log)  # type: ignore[arg-type]
+            result = sync(self.cfg, self.client, user_id=user_id, log_cb=self._log)  # type: ignore[arg-type]
         except Exception as exc:
             self._log(f"❌ Error inesperado: {exc}")
             self.progress.stop()
