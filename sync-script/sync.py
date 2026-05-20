@@ -220,16 +220,30 @@ def _parse_date(cell_value: Any) -> str | None:
     return None
 
 
-def _is_total_row(cells: list[Any]) -> bool:
+def _is_total_row(cells: list[Any], col_offset: int) -> bool:
     """
-    Heurística para detectar filas de totales/resumen:
-    - La celda de CATEGORÍA está vacía, es 'TOTAL', o empieza con 'Total'.
+    Heurística para detectar filas de totales/resumen.
+    col_offset: índice de la columna CATEGORÍA (0 para col A, 1 para col B).
     """
-    cat = cells[0]
+    cat = cells[col_offset] if len(cells) > col_offset else None
     if cat is None:
         return True
     cat_str = str(cat).strip()
-    return cat_str == "" or cat_str.upper().startswith("TOTAL")
+    return cat_str == "" or cat_str.upper().startswith("TOTAL") or cat_str == "x"
+
+
+def _detect_col_offset(all_rows: list[tuple[Any, ...]]) -> int:
+    """
+    Detecta en qué columna empieza CATEGORÍA buscando la fila de encabezado.
+    Retorna el índice de columna (0=A, 1=B).
+    En el Excel de GastApp los datos están en columnas B-F (offset=1).
+    """
+    keywords = {"CATEGORÍA", "CATEGORIA", "CATEGORY"}
+    for row in all_rows:
+        for col_idx, cell in enumerate(row):
+            if cell and str(cell).strip().upper().replace("�", "Í") in keywords:
+                return col_idx
+    return 1  # default: columna B
 
 
 def read_excel(excel_path: str) -> list[ExpenseRow]:
@@ -237,15 +251,15 @@ def read_excel(excel_path: str) -> list[ExpenseRow]:
     Lee todas las pestañas mensuales del Excel en modo read-only.
     Retorna una lista de ExpenseRow con hash_unico ya calculado.
 
-    Estructura esperada de cada pestaña:
-        Columna A: CATEGORÍA
-        Columna B: SUBCATEGORÍA
-        Columna C: FECHA
-        Columna D: DETALLE
-        Columna E: IMPORTE
+    Estructura del Excel de GastApp (columnas B-F):
+        Columna B (idx 1): CATEGORÍA
+        Columna C (idx 2): SUBCATEGORÍA
+        Columna D (idx 3): FECHA
+        Columna E (idx 4): DETALLE
+        Columna F (idx 5): IMPORTE
 
-    Las primeras filas de encabezado se detectan automáticamente
-    buscando la fila donde la celda A contiene "CATEGORÍA" (case-insensitive).
+    La función detecta automáticamente el offset de columna leyendo
+    la fila de encabezado, por lo que funciona aunque cambie el layout.
     """
     wb = openpyxl.load_workbook(excel_path, read_only=True, data_only=True)
     rows: list[ExpenseRow] = []
@@ -260,25 +274,26 @@ def read_excel(excel_path: str) -> list[ExpenseRow]:
         if not all_rows:
             continue
 
-        # Detectar fila de encabezado
+        # Detectar offset de columna y fila de encabezado
+        col = _detect_col_offset(all_rows)
         header_idx = 0
         for i, row in enumerate(all_rows):
-            if row[0] and str(row[0]).strip().upper() in ("CATEGORÍA", "CATEGORIA", "CATEGORY"):
-                header_idx = i + 1     # datos comienzan en la fila siguiente
+            if len(row) > col and row[col] and str(row[col]).strip().upper().replace("�", "Í") in ("CATEGORÍA", "CATEGORIA", "CATEGORY"):
+                header_idx = i + 1
                 break
 
         for raw_row in all_rows[header_idx:]:
             cells = list(raw_row)
-            if len(cells) < 5:
+            if len(cells) < col + 5:
                 continue
-            if _is_total_row(cells):
+            if _is_total_row(cells, col):
                 continue
 
-            categoria = str(cells[0]).strip() if cells[0] else ""
-            subcategoria = str(cells[1]).strip() if cells[1] else ""
-            fecha_raw = cells[2]
-            detalle = str(cells[3]).strip() if cells[3] else ""
-            importe_raw = cells[4]
+            categoria    = str(cells[col]).strip()     if cells[col]     else ""
+            subcategoria = str(cells[col+1]).strip()   if cells[col+1]   else ""
+            fecha_raw    = cells[col+2]
+            detalle      = str(cells[col+3]).strip()   if cells[col+3]   else ""
+            importe_raw  = cells[col+4]
 
             # Validaciones mínimas
             if categoria not in CATEGORIA_VALIDAS:
